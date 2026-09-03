@@ -5,7 +5,7 @@ variable "name" {
 
 variable "region" {
   type    = string
-  default = "ap-south-1"
+  default = "us-east-1"
 }
 
 # ---- Scalr remote-state sharing (read the network layer) ----

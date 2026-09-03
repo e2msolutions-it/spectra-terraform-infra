@@ -4,7 +4,7 @@ terraform {
     organization = "env-v0o989ah28npjf8t6"
 
     workspaces {
-      name = "spectra-global-network"
+      name = "spectra-global-data"
     }
   }
 }

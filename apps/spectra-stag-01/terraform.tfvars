@@ -1,6 +1,6 @@
 environment = "staging"
 instance    = "spectra-stag-01"
-region      = "ap-south-1"
+region      = "us-east-1"
 db_name     = "spectra_stag"
 
 # Set once DNS is ready (Phase 1 provisions ACM + HTTPS):

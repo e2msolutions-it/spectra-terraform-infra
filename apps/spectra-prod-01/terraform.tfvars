@@ -1,6 +1,6 @@
 environment = "prod"
 instance    = "spectra-prod-01"
-region      = "ap-south-1"
+region      = "us-east-1"
 db_name     = "spectra_prod"
 
 # Set once DNS is ready (Phase 1 provisions ACM + HTTPS):

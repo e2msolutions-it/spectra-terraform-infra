@@ -1,5 +1,5 @@
 name             = "spectra-global"
-region           = "ap-south-1"
+region           = "us-east-1"
 instance_type    = "t3.large"
 min_size         = 2
 max_size         = 8

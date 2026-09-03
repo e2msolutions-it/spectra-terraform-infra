@@ -1,7 +1,7 @@
-name                     = "spectra-global"
-region                   = "ap-south-1"
-db_engine_version        = "16.4"
-db_instance_class        = "db.r6g.large"
-db_allocated_storage     = 100
-db_max_allocated_storage = 1000
+name                     = "spectra-global-data"
+region                   = "us-east-1"
+db_engine_version        = "17.5"
+db_instance_class        = "db.t4g.medium"
+db_allocated_storage     = 20
+db_max_allocated_storage = 100
 db_multi_az              = true
