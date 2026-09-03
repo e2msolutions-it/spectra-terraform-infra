@@ -29,7 +29,7 @@ variable "network_workspace" {
 
 variable "db_engine_version" {
   type    = string
-  default = "16.4"
+  default = "17.5"
 }
 
 variable "db_instance_class" {
@@ -39,12 +39,12 @@ variable "db_instance_class" {
 
 variable "db_allocated_storage" {
   type    = number
-  default = 100
+  default = 20
 }
 
 variable "db_max_allocated_storage" {
   type    = number
-  default = 1000
+  default = 100
 }
 
 variable "db_multi_az" {
