@@ -4,7 +4,7 @@ provider "aws" {
     tags = {
       Project   = "spectra"
       Layer     = "global"
-      Component = "compute"
+      Component = "edge"
       ManagedBy = "terraform"
     }
   }

@@ -1,6 +1,6 @@
 variable "name" {
   type    = string
-  default = "spectra-global"
+  default = "spectra-global-edge"
 }
 
 variable "region" {
@@ -12,37 +12,17 @@ variable "region" {
 variable "scalr_hostname" {
   description = "Scalr account hostname, e.g. e2m.scalr.io."
   type        = string
-  default     = "example.scalr.io"
+  default     = "e2msolutions.scalr.io"
 }
 
 variable "scalr_environment" {
   description = "Scalr environment holding the global workspaces."
   type        = string
-  default     = "spectra-global"
+  default     = "env-v0o989ah28npjf8t6"
 }
 
 variable "network_workspace" {
   description = "Scalr workspace name for workspace/global/network."
   type        = string
-  default     = "global-network"
-}
-
-variable "instance_type" {
-  type    = string
-  default = "t3.large"
-}
-
-variable "min_size" {
-  type    = number
-  default = 2
-}
-
-variable "max_size" {
-  type    = number
-  default = 8
-}
-
-variable "desired_capacity" {
-  type    = number
-  default = 2
+  default     = "spectra-global-network"
 }

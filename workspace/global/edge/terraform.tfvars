@@ -1,0 +1,5 @@
+name              = "spectra-global-edge"
+region            = "us-east-1"
+scalr_hostname    = "e2msolutions.scalr.io"
+scalr_environment = "env-v0o989ah28npjf8t6"
+network_workspace = "spectra-global-network"

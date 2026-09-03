@@ -1,3 +1,15 @@
+output "ecs_cluster_name" {
+  value = module.ecs.cluster_name
+}
+
+output "ecs_capacity_provider" {
+  value = module.ecs.capacity_provider_name
+}
+
+output "ecr_repository_urls" {
+  value = module.ecr.repository_urls
+}
+
 output "screenshots_bucket" {
   value = module.screenshots.bucket_name
 }
@@ -8,18 +20,6 @@ output "cognito_user_pool_id" {
 
 output "cognito_user_pool_client_id" {
   value = module.cognito.user_pool_client_id
-}
-
-output "agent_alb_dns" {
-  value = module.alb_agent.alb_dns_name
-}
-
-output "portal_alb_dns" {
-  value = module.alb_portal.alb_dns_name
-}
-
-output "ecs_cluster_name" {
-  value = local.cmp.cluster_name
 }
 
 output "db_address" {

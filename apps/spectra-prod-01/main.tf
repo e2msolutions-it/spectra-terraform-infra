@@ -1,11 +1,30 @@
-# Per-environment screenshots bucket (data isolation; buckets are free).
+# ---- Isolated per-env compute: own ECS cluster + ASG + capacity provider ----
+module "ecs" {
+  source = "../../modules/ecs-cluster"
+
+  name                  = local.name
+  private_subnet_ids    = local.net.private_subnet_ids
+  ecs_security_group_id = local.net.ecs_security_group_id
+  instance_type         = var.instance_type
+  min_size              = var.ecs_min_size
+  max_size              = var.ecs_max_size
+  desired_capacity      = var.ecs_desired_capacity
+}
+
+# ---- Per-env image registry ----
+module "ecr" {
+  source = "../../modules/ecr"
+  name   = local.name
+}
+
+# ---- Per-env screenshots bucket ----
 module "screenshots" {
   source      = "../../modules/screenshots-bucket"
   name        = local.name
   kms_key_arn = local.net.kms_key_arn
 }
 
-# Per-environment Cognito user pool for the portal.
+# ---- Per-env Cognito user pool for the portal ----
 module "cognito" {
   source        = "../../modules/cognito"
   name          = local.name
@@ -13,26 +32,7 @@ module "cognito" {
   logout_urls   = var.domain_portal == "" ? ["https://localhost"] : ["https://${var.domain_portal}"]
 }
 
-# Two public ALBs (agent + portal) on the shared VPC, behind the shared WAF.
-module "alb_agent" {
-  source                = "../../modules/app-alb"
-  name                  = "${local.name}-agent"
-  public_subnet_ids     = local.public_subnets
-  alb_security_group_id = local.net.alb_security_group_id
-  waf_web_acl_arn       = local.net.waf_web_acl_arn
-  placeholder_message   = "Spectra agent endpoint (${var.environment}) - not yet configured"
-}
-
-module "alb_portal" {
-  source                = "../../modules/app-alb"
-  name                  = "${local.name}-portal"
-  public_subnet_ids     = local.public_subnets
-  alb_security_group_id = local.net.alb_security_group_id
-  waf_web_acl_arn       = local.net.waf_web_acl_arn
-  placeholder_message   = "Spectra portal (${var.environment}) - not yet configured"
-}
-
-# ---- App IAM roles for the ECS tasks (Phase 1 attaches them to services) ----
+# ---- App IAM roles for the ECS tasks ----
 data "aws_iam_policy_document" "tasks_assume" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -83,3 +83,6 @@ resource "aws_iam_role_policy" "task" {
   role   = aws_iam_role.task.id
   policy = data.aws_iam_policy_document.task.json
 }
+
+# Phase 1 adds: ECS task definitions + services on this cluster, target groups,
+# and host-based listener rules on the shared ALB (read from global/edge).

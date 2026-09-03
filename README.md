@@ -11,17 +11,18 @@ infra/
   workspace/global/            # shared layer — applied once, consumed by every app
     network/                   # VPC, subnets, NAT, S3 gateway endpoint, KMS, SGs, WAF -> outputs
     data/                      # single shared RDS PostgreSQL                  -> outputs
-    compute/                   # shared ECS-on-EC2 cluster + ECR repos         -> outputs
+    edge/                      # one shared ALB (host-based routing)           -> outputs
     observability/             # PagerDuty escalation + services
-  apps/                        # thin per-environment roots (real values in tfvars)
+  apps/                        # per-env roots: own ECS cluster + ECR + bucket + Cognito
     spectra-prod-01/           # prod cell
     spectra-stag-01/           # staging cell
 ```
 
 ## Model (per your decisions)
 
-- **Fully shared** VPC, NAT, ECS cluster, ECR, and **one RDS instance** across prod and
-  staging — cheapest and simplest.
+- **Shared:** VPC, NAT, **one RDS instance**, and **one ALB** (host-based routing) across
+  prod and staging. **Isolated per env:** ECS cluster + ASG + capacity provider, ECR repos,
+  screenshots bucket, and Cognito pool — so staging can't affect prod's compute.
 - **Logical isolation inside the shared DB:** each environment uses its own database
   (`spectra_prod`, `spectra_stag`) and a least-privilege role, so environments can't read
   each other's data. See "Logical DB bootstrap" below.
@@ -43,7 +44,7 @@ there is no backend block in the code):
 |---|---|
 | `global-network` | `workspace/global/network` |
 | `global-data` | `workspace/global/data` |
-| `global-compute` | `workspace/global/compute` |
+| `global-edge` | `workspace/global/edge` |
 | `global-observability` | `workspace/global/observability` |
 | `spectra-prod-01` | `apps/spectra-prod-01` |
 | `spectra-stag-01` | `apps/spectra-stag-01` |
@@ -51,7 +52,7 @@ there is no backend block in the code):
 Recommended Scalr setup: put the global workspaces in a `spectra-global` environment and the
 apps in `spectra-prod` / `spectra-staging` environments with their own AWS credentials and
 approval policies (prod requires approval). Add **run triggers** so app workspaces re-plan
-when `global-network` / `global-data` / `global-compute` change. Set `pagerduty_token` as a
+when `global-network` / `global-data` / `global-edge` change. Set `pagerduty_token` as a
 sensitive variable on `global-observability`. Use OPA policies for guardrails (tags,
 deny-public-S3, cost limits).
 
@@ -59,10 +60,10 @@ deny-public-S3, cost limits).
 
 1. `global-network`  → VPC/subnets/SGs/KMS/WAF (exposed as outputs)
 2. `global-data`     → single RDS instance (reads network via remote state)
-3. `global-compute`  → shared ECS cluster + ECR (reads network via remote state)
+3. `global-edge`     → one shared ALB (reads network via remote state)
 4. `global-observability` → PagerDuty (needs token)
 5. **Logical DB bootstrap** (once) — see below
-6. `spectra-prod-01`, `spectra-stag-01` → per-env buckets, Cognito, ALBs, IAM
+6. `spectra-prod-01`, `spectra-stag-01` → own ECS cluster + ECR + bucket + Cognito + IAM
 
 ## Logical DB bootstrap (shared instance, isolated databases)
 
