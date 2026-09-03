@@ -17,3 +17,7 @@ output "db_identifier" {
 output "db_master_secret_arn" {
   value = module.postgres.master_secret_arn
 }
+
+output "db_resource_id" {
+  value = module.postgres.resource_id
+}

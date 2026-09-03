@@ -18,3 +18,8 @@ output "master_secret_arn" {
   description = "Secrets Manager ARN with RDS-managed master credentials."
   value       = aws_db_instance.this.master_user_secret[0].secret_arn
 }
+
+output "resource_id" {
+  description = "RDS resource ID, used in IAM DB-auth ARNs (rds-db:connect)."
+  value       = aws_db_instance.this.resource_id
+}

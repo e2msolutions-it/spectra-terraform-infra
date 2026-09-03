@@ -67,16 +67,17 @@ deny-public-S3, cost limits).
 ## Logical DB bootstrap (shared instance, isolated databases)
 
 The RDS instance is private, so run this from inside the VPC (a Scalr agent in the VPC, a
-bastion, or an in-VPC CI job). Pull the master password from the Secrets Manager secret at
-`/spectra/global/data/master_secret_arn`.
+bastion, or an in-VPC CI job). Pull the master password from the Secrets Manager secret named by the `db_master_secret_arn` output (an RDS-managed secret).
 
 ```sql
--- prod
-CREATE ROLE spectra_prod_app LOGIN PASSWORD '<from-secrets-manager>';
+-- prod (IAM auth: role logs in with an IAM token, no password)
+CREATE ROLE spectra_prod_app LOGIN;
+GRANT rds_iam TO spectra_prod_app;
 CREATE DATABASE spectra_prod OWNER spectra_prod_app;
 REVOKE ALL ON DATABASE spectra_prod FROM PUBLIC;
 -- staging
-CREATE ROLE spectra_stag_app LOGIN PASSWORD '<from-secrets-manager>';
+CREATE ROLE spectra_stag_app LOGIN;
+GRANT rds_iam TO spectra_stag_app;
 CREATE DATABASE spectra_stag OWNER spectra_stag_app;
 REVOKE ALL ON DATABASE spectra_stag FROM PUBLIC;
 ```

@@ -26,6 +26,8 @@ data "terraform_remote_state" "compute" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
 locals {
   name           = var.instance
   net            = data.terraform_remote_state.network.outputs

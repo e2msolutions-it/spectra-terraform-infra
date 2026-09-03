@@ -70,9 +70,11 @@ data "aws_iam_policy_document" "task" {
     resources = [local.net.kms_key_arn]
   }
   statement {
-    sid       = "DbSecret"
-    actions   = ["secretsmanager:GetSecretValue"]
-    resources = [local.dat.db_master_secret_arn]
+    # App authenticates to Postgres with a short-lived IAM token as its own
+    # limited role (spectra_<env>_app); it never receives the RDS master secret.
+    sid       = "RdsIamAuth"
+    actions   = ["rds-db:connect"]
+    resources = ["arn:aws:rds-db:${var.region}:${data.aws_caller_identity.current.account_id}:dbuser:${local.dat.db_resource_id}/${var.db_name}_app"]
   }
 }
 
