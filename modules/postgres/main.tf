@@ -29,6 +29,9 @@ resource "aws_db_instance" "this" {
   vpc_security_group_ids = [var.rds_security_group_id]
   publicly_accessible    = false
 
+  # Allow apps (ECS tasks) to auth with short-lived IAM tokens instead of a password.
+  iam_database_authentication_enabled = true
+
   backup_retention_period   = 14
   deletion_protection       = var.deletion_protection
   skip_final_snapshot       = false
@@ -36,6 +39,9 @@ resource "aws_db_instance" "this" {
 
   performance_insights_enabled = true
   auto_minor_version_upgrade   = true
-
+  apply_immediately            = true
+  backup_window                       = "18:00-18:30"         # Updated backup window to 18:00-18:30 UTC
+  maintenance_window                  = "tue:18:45-tue:19:15" # Adjusted maintenance window to follow backup window
+  enabled_cloudwatch_logs_exports     = ["iam-db-auth-error"]
   tags = { Name = "${var.name}-pg" }
 }

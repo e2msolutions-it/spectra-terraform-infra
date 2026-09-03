@@ -1,5 +1,6 @@
 # Terraform
 **/.terraform/*
+**/plan/*
 *.tfstate
 *.tfstate.*
 crash.log
@@ -16,3 +17,5 @@ override.tf.json
 # OS
 .DS_Store
 Thumbs.db
+
+workspace/global/data/plan
