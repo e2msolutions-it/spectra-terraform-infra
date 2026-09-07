@@ -1,7 +1,15 @@
-# Shared ECS cluster (EC2 launch type). Both prod and staging services run on
-# this one capacity pool in the fully-shared model.
+# Per-env ECS-on-EC2 cluster. Runs on arm64 (Graviton / t4g) by default — the
+# AMI is selected to MATCH var.architecture so the launch template can never
+# drift (an x86_64 AMI under an arm64 instance type is what breaks the ASG).
+locals {
+  ecs_ami_ssm = {
+    x86_64 = "/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id"
+    arm64  = "/aws/service/ecs/optimized-ami/amazon-linux-2023/arm64/recommended/image_id"
+  }
+}
+
 data "aws_ssm_parameter" "ecs_ami" {
-  name = "/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id"
+  name = local.ecs_ami_ssm[var.architecture]
 }
 
 resource "aws_ecs_cluster" "this" {
@@ -57,11 +65,11 @@ resource "aws_launch_template" "ecs" {
   monitoring {
     enabled = true
   }
-  user_data = base64encode(<<-EOF
+  user_data = base64encode(<<-USERDATA
     #!/bin/bash
     echo "ECS_CLUSTER=${aws_ecs_cluster.this.name}" >> /etc/ecs/ecs.config
     echo "ECS_ENABLE_CONTAINER_METADATA=true" >> /etc/ecs/ecs.config
-  EOF
+  USERDATA
   )
   tag_specifications {
     resource_type = "instance"

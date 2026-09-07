@@ -7,8 +7,8 @@ db_name     = "spectra_prod"
 domain_agent  = ""
 domain_portal = ""
 
-# Per-env compute sizing (isolated cluster/ASG):
-instance_type        = "t3.large"
+# Per-env compute sizing (isolated cluster/ASG, arm64 / Graviton):
+instance_type        = "t4g.small"
 ecs_min_size         = 2
 ecs_max_size         = 6
 ecs_desired_capacity = 2

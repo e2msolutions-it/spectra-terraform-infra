@@ -33,45 +33,45 @@ variable "domain_portal" {
 # ---- Per-env compute sizing (isolated cluster/ASG) ----
 variable "instance_type" {
   type    = string
-  default = "t3.large"
+  default = "t4g.small"
 }
 
 variable "ecs_min_size" {
   type    = number
-  default = 2
+  default = 1
 }
 
 variable "ecs_max_size" {
   type    = number
-  default = 6
+  default = 2
 }
 
 variable "ecs_desired_capacity" {
   type    = number
-  default = 2
+  default = 1
 }
 
 # ---- Scalr remote-state sharing (read the global layers) ----
 variable "scalr_hostname" {
   description = "Scalr account hostname, e.g. e2m.scalr.io."
   type        = string
-  default     = "example.scalr.io"
+  default     = "e2msolutions.scalr.io"
 }
 
 variable "scalr_environment" {
   description = "Scalr environment holding the global workspaces."
   type        = string
-  default     = "spectra-global"
+  default     = "env-v0o989ah28npjf8t6"
 }
 
 variable "network_workspace" {
   description = "Scalr workspace for workspace/global/network."
   type        = string
-  default     = "global-network"
+  default     = "spectra-global-network"
 }
 
 variable "data_workspace" {
   description = "Scalr workspace for workspace/global/data."
   type        = string
-  default     = "global-data"
+  default     = "spectra-global-data"
 }

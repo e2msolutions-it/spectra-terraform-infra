@@ -32,8 +32,9 @@ variable "domain_portal" {
 
 # ---- Per-env compute sizing (isolated cluster/ASG) ----
 variable "instance_type" {
-  type    = string
-  default = "t3.large"
+  description = "arm64 / Graviton (t4g) by default; the ecs-cluster module matches the AMI to it."
+  type        = string
+  default     = "t4g.small"
 }
 
 variable "ecs_min_size" {
@@ -55,23 +56,23 @@ variable "ecs_desired_capacity" {
 variable "scalr_hostname" {
   description = "Scalr account hostname, e.g. e2m.scalr.io."
   type        = string
-  default     = "example.scalr.io"
+  default     = "e2msolutions.scalr.io"
 }
 
 variable "scalr_environment" {
   description = "Scalr environment holding the global workspaces."
   type        = string
-  default     = "spectra-global"
+  default     = "env-v0o989ah28npjf8t6"
 }
 
 variable "network_workspace" {
   description = "Scalr workspace for workspace/global/network."
   type        = string
-  default     = "global-network"
+  default     = "spectra-global-network"
 }
 
 variable "data_workspace" {
   description = "Scalr workspace for workspace/global/data."
   type        = string
-  default     = "global-data"
+  default     = "spectra-global-data"
 }
