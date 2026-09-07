@@ -14,7 +14,8 @@ ecs_max_size         = 6
 ecs_desired_capacity = 2
 
 # Scalr remote-state sharing (point at your Scalr account + global env):
-scalr_hostname    = "example.scalr.io"
-scalr_environment = "spectra-global"
-network_workspace = "global-network"
-data_workspace    = "global-data"
+scalr_hostname    = "e2msolutions.scalr.io"
+scalr_environment = "env-v0o989ah28npjf8t6"
+network_workspace = "spectra-global-network"
+data_workspace    = "spectra-global-data"
+
