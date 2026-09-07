@@ -29,7 +29,7 @@ variable "network_workspace" {
 
 variable "db_engine_version" {
   type    = string
-  default = "17.5"
+  default = "17.10"
 }
 
 variable "db_instance_class" {

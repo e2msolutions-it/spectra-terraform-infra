@@ -31,9 +31,9 @@ output "db_name" {
 }
 
 output "task_role_arn" {
-  value = aws_iam_role.task.arn
+  value = module.task_iam.task_role_arn
 }
 
 output "task_execution_role_arn" {
-  value = aws_iam_role.task_execution.arn
+  value = module.task_iam.task_execution_role_arn
 }

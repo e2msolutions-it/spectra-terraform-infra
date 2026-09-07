@@ -19,3 +19,5 @@ override.tf.json
 Thumbs.db
 
 workspace/global/data/plan
+apps/spectra-stag-01/plan
+apps/spectra-prod-01/plan

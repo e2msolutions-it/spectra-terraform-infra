@@ -8,7 +8,7 @@ domain_agent  = ""
 domain_portal = ""
 
 # Per-env compute sizing — staging runs smaller than prod:
-instance_type        = "t3.large"
+instance_type        = "t4g.small"
 ecs_min_size         = 1
 ecs_max_size         = 3
 ecs_desired_capacity = 1
