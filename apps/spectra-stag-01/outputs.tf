@@ -37,3 +37,15 @@ output "task_role_arn" {
 output "task_execution_role_arn" {
   value = module.task_iam.task_execution_role_arn
 }
+
+output "events_queue_url" {
+  value = module.events_queue.queue_url
+}
+
+output "events_dlq_url" {
+  value = module.events_queue.dlq_url
+}
+
+output "worker_role_arn" {
+  value = module.task_iam.worker_role_arn
+}

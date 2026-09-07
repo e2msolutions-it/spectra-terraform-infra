@@ -47,19 +47,58 @@ for pair in "spectra_prod:spectra_prod_app" "spectra_stag:spectra_stag_app"; do
     -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;" \
     -c "GRANT USAGE ON SCHEMA public TO $ROLE;" \
     -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO $ROLE;" \
-    -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO $ROLE;"
+    -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO $ROLE;" \
+    -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO $ROLE;"
 
   if [ "${SKIP_MIGRATIONS:-0}" = "1" ]; then
     echo ">> [$DB] SKIP_MIGRATIONS=1 - roles + database + grants done, schema deferred to Phase 1"
   else
     echo ">> [$DB] applying migrations as master ($ADMIN_USER)"
-    FILES=(); for f in "$MIG_DIR"/0*.sql; do FILES+=(-f "$f"); done
-    psql "$CONN dbname=$DB" -v ON_ERROR_STOP=1 "${FILES[@]}"
 
-    echo ">> [$DB] granting DML on the objects just created to $ROLE"
+    # Migration ledger: each file is applied at most once and recorded, so a
+    # failure part-way through is resumable (re-run and it picks up where it
+    # stopped) instead of blowing up on "relation already exists".
+    psql "$CONN dbname=$DB" -v ON_ERROR_STOP=1 -q -c "
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        filename   TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );"
+
+    for f in "$MIG_DIR"/0*.sql; do
+      base="$(basename "$f")"
+
+      # Integrity guard: every Spectra migration starts with a "--" comment.
+      # If it doesn't, the file was truncated/mangled in transit - stop rather
+      # than feeding a broken file to psql.
+      if [ "$(head -c 2 "$f")" != "--" ]; then
+        echo "!! $base does not start with '--' - file looks truncated or corrupted."
+        echo "!! Re-upload it (binary-safe) and compare sha256 before re-running."
+        exit 1
+      fi
+
+      if [ "$(psql "$CONN dbname=$DB" -tAc "SELECT 1 FROM schema_migrations WHERE filename='$base';")" = "1" ]; then
+        echo "   - $base (already applied, skipping)"
+        continue
+      fi
+
+      echo "   + $base"
+      psql "$CONN dbname=$DB" -v ON_ERROR_STOP=1 -q -f "$f"
+      psql "$CONN dbname=$DB" -v ON_ERROR_STOP=1 -q \
+        -c "INSERT INTO schema_migrations(filename) VALUES ('$base');"
+    done
+
+    echo ">> [$DB] granting DML + function EXECUTE on the objects just created to $ROLE"
+    # EXECUTE covers the SECURITY DEFINER partition helpers (0005). The app role
+    # stays DML-only: it can CALL them (they run as the master) but still cannot
+    # create or drop tables itself.
     psql "$CONN dbname=$DB" -v ON_ERROR_STOP=1 \
       -c "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO $ROLE;" \
-      -c "GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO $ROLE;"
+      -c "GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO $ROLE;" \
+      -c "GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO $ROLE;"
+
+    echo ">> [$DB] creating initial monthly partitions"
+    psql "$CONN dbname=$DB" -v ON_ERROR_STOP=1 \
+      -c "SELECT spectra_ensure_month_partitions(2);"
   fi
 done
 

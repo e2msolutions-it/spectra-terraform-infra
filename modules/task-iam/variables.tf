@@ -30,3 +30,8 @@ variable "db_name" {
   description = "Logical DB name inside the shared RDS; the app dbuser is <db_name>_app."
   type        = string
 }
+
+variable "events_queue_arn" {
+  description = "ARN of this env's ingest queue. agent-api may only send; the worker may only receive/delete."
+  type        = string
+}

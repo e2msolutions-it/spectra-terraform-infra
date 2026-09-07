@@ -14,3 +14,12 @@ output "task_execution_role_arn" {
 output "task_execution_role_name" {
   value = aws_iam_role.execution.name
 }
+
+output "worker_role_arn" {
+  description = "Task role for the ingestion worker (queue + DB only, no S3/KMS)."
+  value       = aws_iam_role.worker.arn
+}
+
+output "worker_role_name" {
+  value = aws_iam_role.worker.name
+}

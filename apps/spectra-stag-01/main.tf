@@ -32,6 +32,13 @@ module "cognito" {
   logout_urls   = var.domain_portal == "" ? ["https://localhost"] : ["https://${var.domain_portal}"]
 }
 
+# ---- Per-env ingest queue (agent-api sends, worker drains) ----
+module "events_queue" {
+  source                     = "../../modules/sqs"
+  name                       = local.name
+  visibility_timeout_seconds = var.events_visibility_timeout_seconds
+}
+
 # ---- App IAM roles for the ECS tasks (shared module) ----
 module "task_iam" {
   source                 = "../../modules/task-iam"
@@ -42,6 +49,7 @@ module "task_iam" {
   account_id             = data.aws_caller_identity.current.account_id
   db_resource_id         = local.dat.db_resource_id
   db_name                = var.db_name
+  events_queue_arn       = module.events_queue.queue_arn
 }
 
 # Phase 1 adds: ECS task definitions + services on this cluster, target groups,

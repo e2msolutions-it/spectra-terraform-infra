@@ -32,46 +32,54 @@ variable "domain_portal" {
 
 # ---- Per-env compute sizing (isolated cluster/ASG) ----
 variable "instance_type" {
-  type    = string
-  default = "t4g.small"
+  description = "arm64 / Graviton (t4g) by default; the ecs-cluster module matches the AMI to it."
+  type        = string
+  default     = "t4g.small"
 }
 
 variable "ecs_min_size" {
   type    = number
-  default = 1
+  default = 2
 }
 
 variable "ecs_max_size" {
   type    = number
-  default = 2
+  default = 6
 }
 
 variable "ecs_desired_capacity" {
   type    = number
-  default = 1
+  default = 2
 }
 
 # ---- Scalr remote-state sharing (read the global layers) ----
 variable "scalr_hostname" {
   description = "Scalr account hostname, e.g. e2m.scalr.io."
   type        = string
-  default     = "e2msolutions.scalr.io"
+  default     = "example.scalr.io"
 }
 
 variable "scalr_environment" {
   description = "Scalr environment holding the global workspaces."
   type        = string
-  default     = "env-v0o989ah28npjf8t6"
+  default     = "spectra-global"
 }
 
 variable "network_workspace" {
   description = "Scalr workspace for workspace/global/network."
   type        = string
-  default     = "spectra-global-network"
+  default     = "global-network"
 }
 
 variable "data_workspace" {
   description = "Scalr workspace for workspace/global/data."
   type        = string
-  default     = "spectra-global-data"
+  default     = "global-data"
+}
+
+# ---- Ingest queue ----
+variable "events_visibility_timeout_seconds" {
+  description = "Must exceed the worker's per-batch processing time."
+  type        = number
+  default     = 60
 }
