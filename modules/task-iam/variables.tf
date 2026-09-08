@@ -35,3 +35,9 @@ variable "events_queue_arn" {
   description = "ARN of this env's ingest queue. agent-api may only send; the worker may only receive/delete."
   type        = string
 }
+
+variable "app_secret_arns" {
+  description = "Secrets Manager ARNs agent-api may read (the JWT signing key). Scoped explicitly - never secretsmanager:* on all secrets, which would expose the RDS master password."
+  type        = list(string)
+  default     = []
+}

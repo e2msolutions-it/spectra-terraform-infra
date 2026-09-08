@@ -49,3 +49,40 @@ output "events_dlq_url" {
 output "worker_role_arn" {
   value = module.task_iam.worker_role_arn
 }
+
+output "jwt_secret_arn" {
+  value = module.app_secrets.jwt_secret_arn
+}
+
+output "jwt_secret_populate_command" {
+  description = "Run once after apply - agent-api will not start until the secret has a value."
+  value       = module.app_secrets.populate_command
+}
+
+output "agent_api_log_group" {
+  value = module.agent_api.log_group
+}
+
+output "worker_log_group" {
+  value = module.worker.log_group
+}
+
+output "agent_api_target_group_arn" {
+  value = module.agent_api.target_group_arn
+}
+
+output "pipeline_api" {
+  value = module.pipeline_api.pipeline_name
+}
+
+output "pipeline_api_console" {
+  value = module.pipeline_api.console_url
+}
+
+output "pipeline_portal" {
+  value = module.pipeline_portal.pipeline_name
+}
+
+output "pipeline_build_log_groups" {
+  value = [module.pipeline_api.build_log_group, module.pipeline_portal.build_log_group]
+}

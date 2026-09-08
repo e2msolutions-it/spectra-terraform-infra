@@ -12,7 +12,7 @@
 data "aws_caller_identity" "current" {}
 
 resource "aws_s3_bucket" "this" {
-  bucket = "${var.name}-db-artifacts-${data.aws_caller_identity.current.account_id}"
+  bucket = "${var.name}-${var.suffix}-${data.aws_caller_identity.current.account_id}"
 }
 
 resource "aws_s3_bucket_public_access_block" "this" {
@@ -52,6 +52,11 @@ resource "aws_s3_bucket_versioning" "this" {
 
 resource "aws_s3_bucket_lifecycle_configuration" "this" {
   bucket = aws_s3_bucket.this.id
+
+  # No transitions here at all, but the provider still manages this attribute -
+  # set it explicitly to keep plans clean.
+  transition_default_minimum_object_size = "all_storage_classes_128K"
+
   rule {
     id     = "expire-old-versions"
     status = "Enabled"

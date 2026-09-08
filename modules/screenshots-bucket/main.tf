@@ -34,17 +34,33 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
 
 resource "aws_s3_bucket_lifecycle_configuration" "this" {
   bucket = aws_s3_bucket.this.id
+
+  # Explicit so it stops surfacing as a phantom diff on every plan: AWS now
+  # manages this attribute and defaults it to the 128 KB behaviour.
+  transition_default_minimum_object_size = var.transition_default_minimum_object_size
+
   rule {
-    id     = "tier-and-expire"
+    id     = "expire"
     status = "Enabled"
     filter {}
-    transition {
-      days          = var.ia_days
-      storage_class = "STANDARD_IA"
+
+    # NO IA transition by default: at ~40-80 KB per frame it is either skipped
+    # outright (128 KB minimum) or costs MORE than Standard once the 128 KB
+    # minimum BILLABLE size and per-object transition requests are counted.
+    # See enable_ia_transition for the full reasoning.
+    dynamic "transition" {
+      for_each = var.enable_ia_transition ? [1] : []
+      content {
+        days          = var.ia_days
+        storage_class = "STANDARD_IA"
+      }
     }
+
+    # This is the rule that actually matters: it enforces the retention window.
     expiration {
       days = var.expire_days
     }
+
     abort_incomplete_multipart_upload {
       days_after_initiation = 7
     }

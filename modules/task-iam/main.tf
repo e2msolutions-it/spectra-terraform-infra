@@ -53,6 +53,26 @@ data "aws_iam_policy_document" "task" {
     actions   = ["sqs:SendMessage", "sqs:GetQueueUrl"]
     resources = [var.events_queue_arn]
   }
+  dynamic "statement" {
+    # Scoped to the listed ARNs only. Critically NOT secretsmanager:* - the RDS
+    # master password lives in the same account and must stay unreachable from
+    # the app.
+    for_each = length(var.app_secret_arns) > 0 ? [1] : []
+    content {
+      sid       = "ReadAppSecrets"
+      actions   = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
+      resources = var.app_secret_arns
+    }
+  }
+  dynamic "statement" {
+    # Needed to decrypt those secrets, since they use the shared CMK.
+    for_each = length(var.app_secret_arns) > 0 ? [1] : []
+    content {
+      sid       = "DecryptAppSecrets"
+      actions   = ["kms:Decrypt"]
+      resources = [var.kms_key_arn]
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "task" {

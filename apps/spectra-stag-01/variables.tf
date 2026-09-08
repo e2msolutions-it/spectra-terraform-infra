@@ -56,25 +56,25 @@ variable "ecs_desired_capacity" {
 variable "scalr_hostname" {
   description = "Scalr account hostname, e.g. e2m.scalr.io."
   type        = string
-  default     = "example.scalr.io"
+  default     = "e2msolutions.scalr.io"
 }
 
 variable "scalr_environment" {
   description = "Scalr environment holding the global workspaces."
   type        = string
-  default     = "spectra-global"
+  default     = "env-v0o989ah28npjf8t6"
 }
 
 variable "network_workspace" {
   description = "Scalr workspace for workspace/global/network."
   type        = string
-  default     = "global-network"
+  default     = "spectra-global-network"
 }
 
 variable "data_workspace" {
   description = "Scalr workspace for workspace/global/data."
   type        = string
-  default     = "global-data"
+  default     = "spectra-global-data"
 }
 
 # ---- Ingest queue ----
@@ -82,4 +82,72 @@ variable "events_visibility_timeout_seconds" {
   description = "Must exceed the worker's per-batch processing time."
   type        = number
   default     = 60
+}
+
+variable "edge_workspace" {
+  description = "Scalr workspace for workspace/global/edge (shared ALB + HTTPS listener)."
+  type        = string
+  default     = "spectra-global-edge"
+}
+
+# ---- Images (repos are IMMUTABLE: use a real tag, never :latest) ----
+variable "agent_api_image_tag" {
+  description = "Immutable tag for the agent-api image, e.g. 20260908-0530."
+  type        = string
+}
+
+variable "worker_image_tag" {
+  description = "Immutable tag for the worker image."
+  type        = string
+}
+
+# ---- Service sizing ----
+variable "agent_api_desired_count" {
+  type    = number
+  default = 1
+}
+
+variable "worker_desired_count" {
+  type    = number
+  default = 1
+}
+
+# ---- Listener rule priorities (prod 100-199, staging 200-299) ----
+variable "agent_api_rule_priority" {
+  type    = number
+  default = 200
+}
+
+variable "portal_rule_priority" {
+  type    = number
+  default = 210
+}
+
+# ---- CI/CD ----
+variable "cicd_workspace" {
+  description = "Scalr workspace for workspace/global/cicd (GitHub connection + artifact bucket)."
+  type        = string
+  default     = "spectra-global-cicd"
+}
+
+variable "api_repository_id" {
+  description = "GitHub repo for agent-api + worker, as owner/name."
+  type        = string
+}
+
+variable "portal_repository_id" {
+  description = "GitHub repo for the portal, as owner/name."
+  type        = string
+}
+
+variable "pipeline_branch" {
+  description = "Branch that triggers this environment's pipelines."
+  type        = string
+  default     = "stag"
+}
+
+variable "pipeline_require_approval" {
+  description = "Manual approval before the ECS deploy."
+  type        = bool
+  default     = false
 }

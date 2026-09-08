@@ -22,3 +22,4 @@ workspace/global/data/plan
 apps/spectra-stag-01/plan
 apps/spectra-prod-01/plan
 workspace/global/edge/plan
+workspace/global/cicd/plan

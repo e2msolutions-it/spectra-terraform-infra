@@ -3,6 +3,12 @@ variable "name" {
   type        = string
 }
 
+variable "suffix" {
+  description = "Bucket becomes <name>-<suffix>-<account_id>. e.g. db-artifacts, cicd-artifacts."
+  type        = string
+  default     = "db-artifacts"
+}
+
 variable "kms_key_arn" {
   description = "Shared KMS key for SSE-KMS."
   type        = string
