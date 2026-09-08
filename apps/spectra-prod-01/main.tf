@@ -28,7 +28,11 @@ module "screenshots" {
 module "cognito" {
   source        = "../../modules/cognito"
   name          = local.name
-  callback_urls = var.domain_portal == "" ? ["https://localhost/api/auth/callback/cognito"] : ["https://${var.domain_portal}/api/auth/callback/cognito"]
+  region        = var.region
+  domain_suffix = data.aws_caller_identity.current.account_id
+  # /oauth2/idpresponse is the ALB's own reserved callback path - authentication
+  # is completed by the load balancer, not by an app route.
+  callback_urls = var.domain_portal == "" ? ["https://localhost/oauth2/idpresponse"] : ["https://${var.domain_portal}/oauth2/idpresponse"]
   logout_urls   = var.domain_portal == "" ? ["https://localhost"] : ["https://${var.domain_portal}"]
 }
 
@@ -91,6 +95,49 @@ module "agent_api" {
     EVENTS_QUEUE_URL   = module.events_queue.queue_url
     SCREENSHOTS_BUCKET = module.screenshots.bucket_name
     JWT_SECRET_ARN     = module.app_secrets.jwt_secret_arn
+  }
+}
+
+# ---- portal: the human-facing admin + reporting UI ----
+# Authentication is done by the ALB (authenticate-cognito on this service's
+# listener rule), so the container never sees an anonymous request and holds no
+# session secret. It reads Postgres directly with an RDS IAM token - there is no
+# separate API tier, because the portal needs database access for the dashboards
+# regardless.
+module "portal" {
+  source = "../../modules/ecs-service"
+
+  name                   = "${local.name}-portal"
+  service_name           = "portal"
+  cluster_arn            = module.ecs.cluster_arn
+  capacity_provider_name = module.ecs.capacity_provider_name
+  image                  = "${module.ecr.repository_urls["portal"]}:${var.portal_image_tag}"
+  task_role_arn          = module.task_iam.portal_role_arn
+  execution_role_arn     = module.task_iam.task_execution_role_arn
+  region                 = var.region
+  desired_count          = var.portal_desired_count
+  container_port         = 3000
+
+  attach_to_alb = true
+  vpc_id        = local.net.vpc_id
+  listener_arn  = local.edge.https_listener_arn
+  host_header   = var.domain_portal
+  rule_priority = var.portal_rule_priority
+  # Liveness, NOT readiness: /api/readyz touches the database, and a DB blip
+  # would otherwise deregister every portal task at once.
+  health_check_path = "/api/healthz"
+
+  cognito_user_pool_arn       = module.cognito.user_pool_arn
+  cognito_user_pool_client_id = module.cognito.user_pool_client_id
+  cognito_user_pool_domain    = module.cognito.user_pool_domain
+
+  environment = {
+    PORT       = "3000"
+    HOSTNAME   = "0.0.0.0"
+    AWS_REGION = var.region
+    DB_HOST    = local.dat.db_address
+    DB_NAME    = var.db_name
+    DB_USER    = "${var.db_name}_app"
   }
 }
 
@@ -180,22 +227,17 @@ module "pipeline_portal" {
   kms_key_arn         = local.net.kms_key_arn
 
   task_role_arns = [
-    module.task_iam.task_role_arn,
+    module.task_iam.portal_role_arn,
     module.task_iam.task_execution_role_arn,
   ]
 
-  # No ecs_service yet: the portal service is added in M3. Until then the
-  # pipeline builds and pushes the image but deploys nothing, so merges are
-  # already validated end-to-end.
   images = [
     {
       key            = "portal"
       dockerfile     = "Dockerfile"
       ecr_repository = module.ecr.repository_urls["portal"]
-      # Matches the service_name the portal service will use in M3; unused
-      # until then because this pipeline has no deploy action yet.
-      container_name = "portal"
-      ecs_service    = ""
+      container_name = module.portal.container_name
+      ecs_service    = module.portal.service_name
     },
   ]
 }

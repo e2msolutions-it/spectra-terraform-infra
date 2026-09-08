@@ -112,3 +112,45 @@ resource "aws_iam_role_policy" "worker" {
   role   = aws_iam_role.worker.id
   policy = data.aws_iam_policy_document.worker.json
 }
+
+# ---------- portal task role ----------
+# The portal is human-facing and reads the database directly (there is no
+# separate API tier), so it needs exactly two things and deliberately not a
+# third:
+#
+#   * rds-db:connect as the DML-only app role - it can never alter the schema.
+#   * s3:GetObject on the screenshots bucket + kms:Decrypt, so it can presign
+#     time-limited GET URLs for the screenshot timeline. Objects are never
+#     proxied through the app.
+#
+# NOT granted: sqs:SendMessage (only agents produce events), s3:PutObject (only
+# agents upload), and no access to the app secret - the portal has no signing
+# key of its own because the ALB does its authentication.
+resource "aws_iam_role" "portal" {
+  name               = "${var.name}-portal-task"
+  assume_role_policy = data.aws_iam_policy_document.assume.json
+}
+
+data "aws_iam_policy_document" "portal" {
+  statement {
+    sid       = "RdsIamAuth"
+    actions   = ["rds-db:connect"]
+    resources = ["arn:aws:rds-db:${var.region}:${var.account_id}:dbuser:${var.db_resource_id}/${var.db_name}_app"]
+  }
+  statement {
+    sid       = "ReadScreenshots"
+    actions   = ["s3:GetObject", "s3:ListBucket"]
+    resources = [var.screenshots_bucket_arn, "${var.screenshots_bucket_arn}/*"]
+  }
+  statement {
+    sid       = "DecryptScreenshots"
+    actions   = ["kms:Decrypt", "kms:DescribeKey"]
+    resources = [var.kms_key_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "portal" {
+  name   = "${var.name}-portal-policy"
+  role   = aws_iam_role.portal.id
+  policy = data.aws_iam_policy_document.portal.json
+}

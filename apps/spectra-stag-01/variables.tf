@@ -107,6 +107,12 @@ variable "agent_api_image_tag" {
   default     = "latest"
 }
 
+variable "portal_image_tag" {
+  description = "Bootstrap seed tag for the portal. CodePipeline owns the tag after the first apply."
+  type        = string
+  default     = "latest"
+}
+
 variable "worker_image_tag" {
   description = "Bootstrap seed tag for the worker. CodePipeline owns the tag after the first apply."
   type        = string
@@ -115,6 +121,11 @@ variable "worker_image_tag" {
 
 # ---- Service sizing ----
 variable "agent_api_desired_count" {
+  type    = number
+  default = 1
+}
+
+variable "portal_desired_count" {
   type    = number
   default = 1
 }

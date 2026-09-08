@@ -23,3 +23,12 @@ output "worker_role_arn" {
 output "worker_role_name" {
   value = aws_iam_role.worker.name
 }
+
+output "portal_role_arn" {
+  description = "Task role for the portal (DB + screenshot reads only; no SQS, no uploads, no app secret)."
+  value       = aws_iam_role.portal.arn
+}
+
+output "portal_role_name" {
+  value = aws_iam_role.portal.name
+}

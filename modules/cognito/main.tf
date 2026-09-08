@@ -63,3 +63,17 @@ resource "aws_cognito_user_pool_client" "portal" {
 
   prevent_user_existence_errors = "ENABLED"
 }
+
+# Hosted-UI domain.
+#
+# REQUIRED by the ALB's authenticate-cognito action: the ALB redirects the
+# browser to this domain to run the OIDC code flow, then exchanges the code at
+# the token endpoint. Without a domain the listener rule cannot be created.
+#
+# Cognito prefix domains are globally unique across all AWS accounts, so the
+# account id is mixed in to keep it collision-free without needing a custom
+# domain (which would want its own ACM cert in us-east-1).
+resource "aws_cognito_user_pool_domain" "this" {
+  domain       = "${var.name}-${var.domain_suffix}"
+  user_pool_id = aws_cognito_user_pool.this.id
+}

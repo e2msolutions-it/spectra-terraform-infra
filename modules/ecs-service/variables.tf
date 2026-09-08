@@ -149,3 +149,29 @@ variable "deregistration_delay" {
   type        = number
   default     = 30
 }
+
+# ---- Edge authentication (portal only) ----
+# Leave these empty for device-facing services: agents authenticate with signed
+# requests, and an OIDC redirect would break them.
+variable "cognito_user_pool_arn" {
+  description = "Set to enable authenticate-cognito on this service's listener rule. Empty = no edge auth."
+  type        = string
+  default     = ""
+}
+
+variable "cognito_user_pool_client_id" {
+  type    = string
+  default = ""
+}
+
+variable "cognito_user_pool_domain" {
+  description = "Hosted-UI domain PREFIX (not the full URL)."
+  type        = string
+  default     = ""
+}
+
+variable "auth_session_timeout_seconds" {
+  description = "How long an authenticated ALB session lasts before the login flow re-runs. 12h keeps a working day sign-in-free without leaving sessions open indefinitely."
+  type        = number
+  default     = 43200
+}

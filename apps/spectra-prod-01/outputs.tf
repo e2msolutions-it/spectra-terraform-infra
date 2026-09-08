@@ -91,3 +91,20 @@ output "enrollment_secret_arn" {
   description = "Where the fleet enrollment secret lives. Populate + register it with: spectra-db.sh enroll-secret <database> <this arn>"
   value       = module.app_secrets.enrollment_secret_arn
 }
+
+output "portal_log_group" {
+  value = module.portal.log_group
+}
+
+output "portal_url" {
+  value = var.domain_portal == "" ? "" : "https://${var.domain_portal}"
+}
+
+output "cognito_hosted_ui" {
+  description = "Where the ALB sends people to sign in. Add portal users in this pool (admin-create-user only, MFA required)."
+  value       = module.cognito.hosted_ui_base
+}
+
+output "portal_force_deploy_command" {
+  value = module.portal.force_deploy_command
+}

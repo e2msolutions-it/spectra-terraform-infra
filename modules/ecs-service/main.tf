@@ -110,9 +110,43 @@ resource "aws_lb_listener_rule" "this" {
     }
   }
 
+  # Authentication happens HERE, at the edge, when a Cognito pool is supplied -
+  # not inside the application. An anonymous request is redirected to the
+  # Cognito hosted UI and never reaches the container; the ALB completes the
+  # OIDC code flow at its reserved /oauth2/idpresponse path and then forwards
+  # the request with a signed x-amzn-oidc-data header carrying the identity.
+  #
+  # Consequences worth knowing:
+  #   * No session secret, callback route or auth library in the app, and no way
+  #     to render a page before the auth check - the request does not arrive.
+  #   * order matters: authenticate must precede forward.
+  #   * The TARGET GROUP health check is unaffected. Health checks are sent by
+  #     the ALB straight to the target and never traverse listener rules, so
+  #     /healthz does not need excluding here.
+  #   * agent-api passes no pool: devices authenticate with signed requests, and
+  #     an OIDC redirect would break them.
+  dynamic "action" {
+    for_each = var.cognito_user_pool_arn != "" ? [1] : []
+    content {
+      type  = "authenticate-cognito"
+      order = 1
+      authenticate_cognito {
+        user_pool_arn       = var.cognito_user_pool_arn
+        user_pool_client_id = var.cognito_user_pool_client_id
+        user_pool_domain    = var.cognito_user_pool_domain
+        # An expired session re-runs the login flow rather than returning 401,
+        # which is what a human in a browser wants.
+        on_unauthenticated_request = "authenticate"
+        scope                      = "openid email profile"
+        session_timeout            = var.auth_session_timeout_seconds
+      }
+    }
+  }
+
   action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.this[0].arn
+    order            = var.cognito_user_pool_arn != "" ? 2 : null
   }
 }
 
