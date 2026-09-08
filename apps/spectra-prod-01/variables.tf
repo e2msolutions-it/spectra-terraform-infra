@@ -34,7 +34,7 @@ variable "domain_portal" {
 variable "instance_type" {
   description = "arm64 / Graviton (t4g) by default; the ecs-cluster module matches the AMI to it."
   type        = string
-  default     = "t4g.large"
+  default     = "t4g.small"
 }
 
 variable "ecs_min_size" {

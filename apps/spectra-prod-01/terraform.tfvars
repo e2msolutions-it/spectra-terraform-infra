@@ -8,7 +8,7 @@ domain_agent  = "spectra-api.e2msolutions.net"
 domain_portal = "spectra.e2msolutions.net"
 
 # Per-env compute sizing (isolated cluster/ASG, arm64 / Graviton):
-instance_type        = "t4g.large"
+instance_type        = "t4g.small"
 ecs_min_size         = 2
 ecs_max_size         = 6
 ecs_desired_capacity = 2
