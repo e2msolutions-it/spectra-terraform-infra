@@ -1,6 +1,29 @@
 variable "name" {
-  description = "Service name, e.g. spectra-stag-01-agent-api."
+  description = <<-EOT
+    Instance-prefixed name, e.g. spectra-stag-01-agent-api. This is the name for
+    everything that is unique per ACCOUNT+REGION rather than per cluster, and it
+    must stay prefixed:
+      * the task-definition FAMILY - two envs sharing a family would interleave
+        their revisions, so "prod revision 7" could be a staging build
+      * the CloudWatch log group - a shared group merges prod and staging logs
+      * the target group name - ELB target group names are account-wide
+    See service_name for the parts that are cluster-scoped.
+  EOT
   type        = string
+}
+
+variable "service_name" {
+  description = <<-EOT
+    Short name for the things scoped INSIDE the cluster or task definition:
+    the ECS service itself and the container. Service names only need to be
+    unique per cluster, and each env has its own cluster, so "agent-api" reads
+    better in the console than "spectra-stag-01-agent-api" - the cluster name
+    already carries the environment.
+
+    Defaults to `name` when empty, so an omitted value is never a collision.
+  EOT
+  type        = string
+  default     = ""
 }
 
 variable "cluster_arn" {

@@ -18,6 +18,10 @@ resource "aws_cloudwatch_log_group" "this" {
 }
 
 locals {
+  # Cluster-scoped identity. Falls back to the prefixed name so callers that
+  # do not set service_name behave exactly as before.
+  svc = var.service_name != "" ? var.service_name : var.name
+
   # Dynamic host port: hostPort 0 lets ECS pick a free ephemeral port, so many
   # tasks of the same service can share one instance.
   port_mappings = var.attach_to_alb ? [{
@@ -28,7 +32,7 @@ locals {
 
   container = merge(
     {
-      name              = var.name
+      name              = local.svc
       image             = var.image
       essential         = true
       cpu               = var.cpu
@@ -115,7 +119,9 @@ resource "aws_lb_listener_rule" "this" {
 # ---------- Service ----------
 
 resource "aws_ecs_service" "this" {
-  name            = var.name
+  # Cluster-scoped, so it does not need the env prefix. NOTE: this is ForceNew -
+  # renaming an existing service destroys and recreates it.
+  name            = local.svc
   cluster         = var.cluster_arn
   task_definition = aws_ecs_task_definition.this.arn
   desired_count   = var.desired_count
@@ -151,7 +157,7 @@ resource "aws_ecs_service" "this" {
     for_each = var.attach_to_alb ? [1] : []
     content {
       target_group_arn = aws_lb_target_group.this[0].arn
-      container_name   = var.name
+      container_name   = local.svc
       container_port   = var.container_port
     }
   }

@@ -2,6 +2,11 @@ output "service_name" {
   value = aws_ecs_service.this.name
 }
 
+output "container_name" {
+  description = "Must match the `name` in imagedefinitions.json, so the cicd-pipeline module reads it from here rather than re-deriving it."
+  value       = local.svc
+}
+
 output "task_definition_arn" {
   value = aws_ecs_task_definition.this.arn
 }

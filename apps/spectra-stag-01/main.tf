@@ -65,6 +65,7 @@ module "agent_api" {
   source = "../../modules/ecs-service"
 
   name                   = "${local.name}-agent-api"
+  service_name           = "agent-api"
   cluster_arn            = module.ecs.cluster_arn
   capacity_provider_name = module.ecs.capacity_provider_name
   image                  = "${module.ecr.repository_urls["agent-api"]}:${var.agent_api_image_tag}"
@@ -98,6 +99,7 @@ module "worker" {
   source = "../../modules/ecs-service"
 
   name                   = "${local.name}-worker"
+  service_name           = "worker"
   cluster_arn            = module.ecs.cluster_arn
   capacity_provider_name = module.ecs.capacity_provider_name
   image                  = "${module.ecr.repository_urls["worker"]}:${var.worker_image_tag}"
@@ -148,14 +150,14 @@ module "pipeline_api" {
       key            = "agent-api"
       dockerfile     = "Dockerfile"
       ecr_repository = module.ecr.repository_urls["agent-api"]
-      container_name = "${local.name}-agent-api"
+      container_name = module.agent_api.container_name
       ecs_service    = module.agent_api.service_name
     },
     {
       key            = "worker"
       dockerfile     = "Dockerfile.worker"
       ecr_repository = module.ecr.repository_urls["worker"]
-      container_name = "${local.name}-worker"
+      container_name = module.worker.container_name
       ecs_service    = module.worker.service_name
     },
   ]
@@ -190,7 +192,9 @@ module "pipeline_portal" {
       key            = "portal"
       dockerfile     = "Dockerfile"
       ecr_repository = module.ecr.repository_urls["portal"]
-      container_name = "${local.name}-portal"
+      # Matches the service_name the portal service will use in M3; unused
+      # until then because this pipeline has no deploy action yet.
+      container_name = "portal"
       ecs_service    = ""
     },
   ]
