@@ -48,17 +48,17 @@ variable "marketing_host" {
 variable "scalr_hostname" {
   description = "Scalr account hostname, e.g. e2m.scalr.io."
   type        = string
-  default     = "example.scalr.io"
+  default     = "e2msolutions.scalr.io"
 }
 
 variable "scalr_environment" {
   description = "Scalr environment holding the global workspaces."
   type        = string
-  default     = "spectra-global"
+  default     = "env-v0o989ah28npjf8t6"
 }
 
 variable "network_workspace" {
   description = "Scalr workspace name for workspace/global/network."
   type        = string
-  default     = "global-network"
+  default     = "spectra-global-network"
 }

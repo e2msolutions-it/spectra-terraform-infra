@@ -90,15 +90,27 @@ variable "edge_workspace" {
   default     = "spectra-global-edge"
 }
 
-# ---- Images (repos are IMMUTABLE: use a real tag, never :latest) ----
+# ---- Images: BOOTSTRAP SEED ONLY ----
+# ECS needs a task definition to create a service, and a task definition needs
+# an image reference - so Terraform must name SOME tag on the very first apply.
+# After that it is irrelevant: the service sets
+# lifecycle { ignore_changes = [task_definition] }, so CodePipeline owns every
+# subsequent revision. It computes the real tag (<commit-sha>-<build-number>)
+# during the build and hands it to the ECS deploy action via
+# imagedefinitions.json. Changing these values later does NOT redeploy anything.
+#
+# "latest" is used purely as that seed because it already exists in every repo.
+# It is NOT how deployments happen - CI never pushes or reads it.
 variable "agent_api_image_tag" {
-  description = "Immutable tag for the agent-api image, e.g. 20260908-0530."
+  description = "Bootstrap seed tag for agent-api. CodePipeline owns the tag after the first apply."
   type        = string
+  default     = "latest"
 }
 
 variable "worker_image_tag" {
-  description = "Immutable tag for the worker image."
+  description = "Bootstrap seed tag for the worker. CodePipeline owns the tag after the first apply."
   type        = string
+  default     = "latest"
 }
 
 # ---- Service sizing ----

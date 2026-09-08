@@ -4,6 +4,18 @@
 # configured branch. Because your flow is dev -> stag -> main via MERGES, only a
 # merge into that branch fires the pipeline - exactly the intended gate.
 
+locals {
+  # Only images wired to a real ECS service can be deployed. The portal has an
+  # ECR repo and a build but no service yet, so it passes ecs_service = "" and
+  # this map comes out empty - which makes the pipeline BUILD-ONLY
+  # (Source -> Build). That is a valid CodePipeline: an empty Deploy stage is
+  # not ("At least 1 action blocks are required"), so the stage itself has to
+  # disappear. Adding the portal service later makes Deploy appear with no
+  # module changes.
+  deploy_images = { for img in var.images : img.key => img if img.ecs_service != "" }
+  has_deploy    = length(local.deploy_images) > 0
+}
+
 resource "aws_cloudwatch_log_group" "build" {
   name              = "/aws/codebuild/${var.name}"
   retention_in_days = var.log_retention_days
@@ -93,7 +105,7 @@ resource "aws_codepipeline" "this" {
   # Production only: the image is already built and pushed, so approving here
   # gates the ROLLOUT, not the build. Rejecting costs nothing.
   dynamic "stage" {
-    for_each = var.require_approval ? [1] : []
+    for_each = var.require_approval && local.has_deploy ? [1] : []
     content {
       name = "Approve"
       action {
@@ -112,22 +124,25 @@ resource "aws_codepipeline" "this" {
   # One deploy action per service, each reading its own imagedefinitions file.
   # They run in parallel (same run_order), so agent-api and worker roll out
   # together.
-  stage {
-    name = "Deploy"
-    dynamic "action" {
-      for_each = { for img in var.images : img.key => img if img.ecs_service != "" }
-      content {
-        name            = "Deploy-${action.value.key}"
-        category        = "Deploy"
-        owner           = "AWS"
-        provider        = "ECS"
-        version         = "1"
-        input_artifacts = ["images"]
-        run_order       = 1
-        configuration = {
-          ClusterName = var.ecs_cluster_name
-          ServiceName = action.value.ecs_service
-          FileName    = "imagedefinitions-${action.value.key}.json"
+  dynamic "stage" {
+    for_each = local.has_deploy ? [1] : []
+    content {
+      name = "Deploy"
+      dynamic "action" {
+        for_each = local.deploy_images
+        content {
+          name            = "Deploy-${action.value.key}"
+          category        = "Deploy"
+          owner           = "AWS"
+          provider        = "ECS"
+          version         = "1"
+          input_artifacts = ["images"]
+          run_order       = 1
+          configuration = {
+            ClusterName = var.ecs_cluster_name
+            ServiceName = action.value.ecs_service
+            FileName    = "imagedefinitions-${action.value.key}.json"
+          }
         }
       }
     }

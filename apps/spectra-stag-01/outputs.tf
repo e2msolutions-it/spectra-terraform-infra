@@ -86,3 +86,8 @@ output "pipeline_portal" {
 output "pipeline_build_log_groups" {
   value = [module.pipeline_api.build_log_group, module.pipeline_portal.build_log_group]
 }
+
+output "enrollment_secret_arn" {
+  description = "Where the fleet enrollment secret lives. Populate + register it with: spectra-db.sh enroll-secret <database> <this arn>"
+  value       = module.app_secrets.enrollment_secret_arn
+}

@@ -56,25 +56,25 @@ variable "ecs_desired_capacity" {
 variable "scalr_hostname" {
   description = "Scalr account hostname, e.g. e2m.scalr.io."
   type        = string
-  default     = "example.scalr.io"
+  default     = "e2msolutions.scalr.io"
 }
 
 variable "scalr_environment" {
   description = "Scalr environment holding the global workspaces."
   type        = string
-  default     = "spectra-global"
+  default     = "env-v0o989ah28npjf8t6"
 }
 
 variable "network_workspace" {
   description = "Scalr workspace for workspace/global/network."
   type        = string
-  default     = "global-network"
+  default     = "spectra-global-network"
 }
 
 variable "data_workspace" {
   description = "Scalr workspace for workspace/global/data."
   type        = string
-  default     = "global-data"
+  default     = "spectra-global-data"
 }
 
 # ---- Ingest queue ----
@@ -87,18 +87,30 @@ variable "events_visibility_timeout_seconds" {
 variable "edge_workspace" {
   description = "Scalr workspace for workspace/global/edge (shared ALB + HTTPS listener)."
   type        = string
-  default     = "global-edge"
+  default     = "spectra-global-edge"
 }
 
-# ---- Images (repos are IMMUTABLE: use a real tag, never :latest) ----
+# ---- Images: BOOTSTRAP SEED ONLY ----
+# ECS needs a task definition to create a service, and a task definition needs
+# an image reference - so Terraform must name SOME tag on the very first apply.
+# After that it is irrelevant: the service sets
+# lifecycle { ignore_changes = [task_definition] }, so CodePipeline owns every
+# subsequent revision. It computes the real tag (<commit-sha>-<build-number>)
+# during the build and hands it to the ECS deploy action via
+# imagedefinitions.json. Changing these values later does NOT redeploy anything.
+#
+# "latest" is used purely as that seed because it already exists in every repo.
+# It is NOT how deployments happen - CI never pushes or reads it.
 variable "agent_api_image_tag" {
-  description = "Immutable tag for the agent-api image, e.g. 20260908-0530."
+  description = "Bootstrap seed tag for agent-api. CodePipeline owns the tag after the first apply."
   type        = string
+  default     = "latest"
 }
 
 variable "worker_image_tag" {
-  description = "Immutable tag for the worker image."
+  description = "Bootstrap seed tag for the worker. CodePipeline owns the tag after the first apply."
   type        = string
+  default     = "latest"
 }
 
 # ---- Service sizing ----
@@ -127,7 +139,7 @@ variable "portal_rule_priority" {
 variable "cicd_workspace" {
   description = "Scalr workspace for workspace/global/cicd (GitHub connection + artifact bucket)."
   type        = string
-  default     = "global-cicd"
+  default     = "spectra-global-cicd"
 }
 
 variable "api_repository_id" {
