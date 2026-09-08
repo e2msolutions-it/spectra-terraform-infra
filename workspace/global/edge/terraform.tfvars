@@ -1,8 +1,8 @@
-name              = "spectra-shared"
+name              = "spectra-global-edge"
 region            = "us-east-1"
-scalr_hostname    = "example.scalr.io"
-scalr_environment = "spectra-global"
-network_workspace = "global-network"
+scalr_hostname    = "e2msolutions.scalr.io"
+scalr_environment = "env-v0o989ah28npjf8t6"
+network_workspace = "spectra-global-network"
 
 # ---- DNS / TLS ----
 # e2msolutions.net is hosted in Route53 (this account). Apex + www are 301'd to
@@ -16,4 +16,4 @@ alb_hostnames = ["spectra", "spectra-api", "spectra-stag", "spectra-api-stag"]
 
 # STEP 1: apply with false, set the NS records at the registrar.
 # STEP 2: flip to true and re-apply.
-dns_delegated = false
+dns_delegated = true

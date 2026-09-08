@@ -1,6 +1,6 @@
 variable "name" {
   type    = string
-  default = "spectra-shared"
+  default = "spectra-global-edge"
 }
 
 variable "region" {
