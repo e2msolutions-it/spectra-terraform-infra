@@ -21,3 +21,12 @@ output "db_master_secret_arn" {
 output "db_resource_id" {
   value = module.postgres.resource_id
 }
+
+output "db_artifacts_bucket" {
+  value = module.db_artifacts.bucket_name
+}
+
+output "db_artifacts_s3_base" {
+  description = "Pass to spectra-db.sh as S3_BASE."
+  value       = module.db_artifacts.s3_base
+}

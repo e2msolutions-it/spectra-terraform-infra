@@ -14,3 +14,12 @@ output "http_listener_arn" {
   description = "Placeholder HTTP listener ARN. Phase 1 adds the HTTPS listener + host-based rules."
   value       = aws_lb_listener.placeholder.arn
 }
+
+output "https_listener_arn" {
+  description = "HTTPS listener ARN, or empty until a certificate is supplied. App cells attach host-based rules to this."
+  value       = try(aws_lb_listener.https[0].arn, "")
+}
+
+output "https_enabled" {
+  value = length(aws_lb_listener.https) > 0
+}

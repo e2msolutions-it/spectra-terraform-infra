@@ -29,3 +29,13 @@ module "postgres" {
   max_allocated_storage = var.db_max_allocated_storage
   multi_az              = var.db_multi_az
 }
+
+# Shared ops bucket holding the DB migration .sql files and the spectra-db.sh
+# helper, so a throwaway CloudShell VPC environment (no persistent storage) can
+# fetch everything in one command instead of re-uploading each session.
+module "db_artifacts" {
+  source = "../../../modules/artifacts-bucket"
+
+  name        = var.name
+  kms_key_arn = local.net.kms_key_arn
+}
