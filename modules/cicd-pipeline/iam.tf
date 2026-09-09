@@ -30,6 +30,15 @@ data "aws_iam_policy_document" "build" {
     resources = ["*"]
   }
   statement {
+    # Pulling base images from ECR Public instead of Docker Hub, to escape
+    # Docker Hub's per-IP anonymous rate limit (one NAT gateway = one IP for
+    # every build in this VPC). sts:GetServiceBearerToken is what ECR Public
+    # authentication actually uses; neither action is resource-scopeable.
+    sid       = "EcrPublicLogin"
+    actions   = ["ecr-public:GetAuthorizationToken", "sts:GetServiceBearerToken"]
+    resources = ["*"]
+  }
+  statement {
     sid = "EcrPush"
     actions = [
       "ecr:BatchCheckLayerAvailability",
@@ -108,13 +117,25 @@ data "aws_iam_policy_document" "pipeline" {
     resources = [aws_codebuild_project.this.arn]
   }
   statement {
-    # Registering a task-definition revision needs Describe/Register; these are
-    # not resource-scopeable in IAM.
-    sid = "EcsTaskDefinitions"
+    # The ECS deploy action does more than call UpdateService: it registers a
+    # new task-definition revision, TAGS it, and then POLLS the cluster's tasks
+    # to decide whether the rollout succeeded. Miss any of these and the action
+    # fails with an insufficient-permissions error rather than a useful one.
+    #
+    # None of them are resource-scopeable in a way that helps here:
+    #   * task definitions have no per-family ARN before they exist
+    #   * ListTasks/DescribeTasks are per-TASK ARNs, which are created and
+    #     destroyed on every deploy, so they cannot be enumerated up front
+    # They are all read-or-tag operations. The one action that actually changes
+    # a running service - UpdateService - stays narrowly scoped below.
+    sid = "EcsRolloutIntrospection"
     actions = [
       "ecs:DescribeTaskDefinition",
       "ecs:RegisterTaskDefinition",
       "ecs:DeregisterTaskDefinition",
+      "ecs:TagResource",
+      "ecs:ListTasks",
+      "ecs:DescribeTasks",
     ]
     resources = ["*"]
   }

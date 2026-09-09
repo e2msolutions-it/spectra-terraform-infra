@@ -35,6 +35,13 @@ locals {
         commands = concat([
           "set -euo pipefail",
           "aws ecr get-login-password --region ${var.region} | docker login --username AWS --password-stdin ${local.registry}",
+          # Base images are pulled from ECR Public, not Docker Hub, because the
+          # whole VPC shares one NAT IP and Docker Hub rate-limits anonymous
+          # pulls per IP (HTTP 429 when two pipelines build at once).
+          # Authenticating raises the ECR Public limit well above anything this
+          # account will do. ECR Public lives ONLY in us-east-1, so the region is
+          # fixed here regardless of var.region.
+          "aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws",
           "SHORT_SHA=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c1-12)",
           "IMAGE_TAG=$SHORT_SHA-$CODEBUILD_BUILD_NUMBER",
           "echo \"image tag: $IMAGE_TAG\"",
