@@ -138,6 +138,12 @@ module "portal" {
     DB_HOST    = local.dat.db_address
     DB_NAME    = var.db_name
     DB_USER    = "${var.db_name}_app"
+    # The portal PROXIES screenshot bytes rather than handing out presigned
+    # URLs, so it reads from the bucket itself. Its task role already had
+    # s3:GetObject + kms:Decrypt for exactly this; only the bucket NAME was
+    # missing. A presigned URL would work without a session and make every
+    # fetch after the first invisible to the audit log.
+    SCREENSHOTS_BUCKET = module.screenshots.bucket_name
   }
 }
 
