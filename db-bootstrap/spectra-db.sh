@@ -243,7 +243,13 @@ cmd_enroll_secret() {
 
 cmd_allowlist() {
   # CSV columns (header required, order free):
-  #   hostname,email,full_name[,employee_code][,note]
+  #   hostname,email,full_name[,employee_code][,team][,note]
+  #
+  # team is the DIVISION (WordPress, SEO, Design, ...). Optional, and creating
+  # it here rather than on a screen is deliberate: the allowlist CSV is already
+  # the one place a person's name, machine and email are written down, so the
+  # division belongs beside them rather than in a second list that drifts.
+  # Omitting the column on a later import does NOT unassign anybody.
   local db="${1:?usage: allowlist <database> <file.csv>}"
   local csv="${2:?usage: allowlist <database> <file.csv>}"
   [ -f "$csv" ] || die "no such file: $csv"
@@ -275,7 +281,7 @@ with open(sys.argv[1], newline="", encoding="utf-8-sig") as fh:
         if not host or not email or not name:
             bad.append((n, "hostname, email and full_name are all required"))
             continue
-        rows.append((host, email, name, g("employee_code"), g("note")))
+        rows.append((host, email, name, g("employee_code"), g("note"), g("team")))
 
 if bad:
     for n, why in bad:
@@ -284,15 +290,25 @@ if not rows:
     sys.exit("no usable rows in CSV")
 
 print("BEGIN;")
-for host, email, name, code, note in rows:
+
+# Divisions first, so every employee row below can look its own up by name.
+for t in sorted({r[5] for r in rows if r[5]}):
+    print(f"INSERT INTO team (org_id, name) VALUES ('{org}', {lit(t)}) "
+          f"ON CONFLICT (org_id, name) DO NOTHING;")
+
+for host, email, name, code, note, team in rows:
     # employee: one row per person, keyed on (org_id, email). Re-running an
     # import refreshes the name/code rather than duplicating the person.
     print(f"""
-INSERT INTO employee (org_id, email, full_name, employee_code)
-VALUES ('{org}', {lit(email)}, {lit(name)}, {lit(code)})
+INSERT INTO employee (org_id, email, full_name, employee_code, team_id)
+VALUES ('{org}', {lit(email)}, {lit(name)}, {lit(code)},
+        (SELECT id FROM team WHERE org_id = '{org}' AND name = {lit(team)}))
 ON CONFLICT (org_id, email) DO UPDATE
    SET full_name = EXCLUDED.full_name,
-       employee_code = COALESCE(EXCLUDED.employee_code, employee.employee_code);
+       employee_code = COALESCE(EXCLUDED.employee_code, employee.employee_code),
+       -- COALESCE, not assignment: re-running an import whose CSV has no team
+       -- column must not quietly empty every division.
+       team_id = COALESCE(EXCLUDED.team_id, employee.team_id);
 
 INSERT INTO device_allowlist (org_id, match_type, match_value, employee_id, note)
 SELECT '{org}', 'hostname', {lit(host)}, e.id, {lit(note)}
@@ -310,7 +326,9 @@ PY
   rm -f /tmp/spectra-allowlist.sql
   psql "$BASE dbname=$db" -tAc \
     "SELECT '   employees: '||(SELECT count(*) FROM employee WHERE org_id='$id')
-          ||'   allowlisted machines: '||(SELECT count(*) FROM device_allowlist WHERE org_id='$id');"
+          ||'   allowlisted machines: '||(SELECT count(*) FROM device_allowlist WHERE org_id='$id')
+          ||'   divisions: '||(SELECT count(*) FROM team WHERE org_id='$id')
+          ||'   without a division: '||(SELECT count(*) FROM employee WHERE org_id='$id' AND team_id IS NULL AND status='active');"
   log "done"
 }
 
@@ -337,7 +355,9 @@ Seeding (run once per environment, in this order):
   ./spectra-db.sh allowlist <database> <file.csv>     import machines + employees
   ./spectra-db.sh enroll-secret <database> [arn]      issue/rotate the fleet secret
 
-  CSV header: hostname,email,full_name[,employee_code][,note]
+  CSV header: hostname,email,full_name[,employee_code][,team][,note]
+  'team' is the division and drives the monthly tracker export. Leaving the
+  column out of a later import does not unassign anyone.
   The [arn] is the app cell's 'terraform output enrollment_secret_arn'; pass it
   and the plaintext is stored in Secrets Manager instead of printed only once.
 
