@@ -241,6 +241,46 @@ cmd_enroll_secret() {
   printf '   This is the last time it is printed. The database stores only its SHA-256.\n'
 }
 
+cmd_portal_admin() {
+  # Creates the FIRST portal administrator, which is the one account that cannot
+  # be created from the portal itself.
+  #
+  # Until a portal_user row exists, the portal treats everyone who can sign in as
+  # an admin and says so in a banner on every page (see lib/rbac.ts). That
+  # fallback exists so shipping roles cannot lock the company out of a working
+  # portal - and it closes permanently the moment this command is run once.
+  #
+  # cognito_sub is left NULL on purpose. It is minted by Cognito and cannot be
+  # known before that person signs in; the row claims it on their first sign-in
+  # and matches on it from then on. So all that is needed here is the address
+  # they sign in with.
+  local db="${1:?usage: portal-admin <database> <email> [\"Full Name\"]}"
+  local email="${2:?usage: portal-admin <database> <email> [\"Full Name\"]}"
+  local name="${3:-}"
+  ensure_psql; discover
+  local id; id="$(org_id_for "$db" "$ORG_NAME")"
+  [ -n "$id" ] || die "no organization '$ORG_NAME' in $db - run 'seed $db' first"
+
+  # ON CONFLICT so re-running is harmless and PROMOTES rather than duplicating:
+  # the likeliest reason to run this twice is somebody locking themselves out by
+  # demoting the wrong account, and a second run should fix that, not fail.
+  # The email is normalised by a trigger (migration 0012), so case and stray
+  # whitespace cannot create a second row for the same person.
+  psql "$BASE dbname=$db" -v ON_ERROR_STOP=1 -q -c "
+    INSERT INTO portal_user (org_id, email, full_name, role)
+    VALUES ('$id', \$\$${email}\$\$, nullif(\$\$${name}\$\$, ''), 'admin')
+    ON CONFLICT (org_id, email) DO UPDATE
+       SET role = 'admin', status = 'active',
+           full_name = COALESCE(portal_user.full_name, EXCLUDED.full_name);"
+
+  log "$db: $email is a portal administrator"
+  psql "$BASE dbname=$db" -tAc \
+    "SELECT '   portal users: '||count(*)
+          ||'   admins: '||count(*) FILTER (WHERE role='admin' AND status='active')
+       FROM portal_user WHERE org_id='$id';"
+  log "everyone else is added from the portal: Settings -> Portal users"
+}
+
 cmd_allowlist() {
   # CSV columns (header required, order free):
   #   hostname,email,full_name[,employee_code][,team][,note]
@@ -341,6 +381,7 @@ case "${1:-}" in
   seed)          shift; cmd_seed          "$@" ;;
   enroll-secret) shift; cmd_enroll_secret "$@" ;;
   allowlist)     shift; cmd_allowlist     "$@" ;;
+  portal-admin)  shift; cmd_portal_admin  "$@" ;;
   *) cat <<EOF
 Spectra DB helper
 
@@ -354,12 +395,18 @@ Seeding (run once per environment, in this order):
   ./spectra-db.sh seed <database>                     ensure the organization row
   ./spectra-db.sh allowlist <database> <file.csv>     import machines + employees
   ./spectra-db.sh enroll-secret <database> [arn]      issue/rotate the fleet secret
+  ./spectra-db.sh portal-admin <database> <email>     create the first portal admin
 
   CSV header: hostname,email,full_name[,employee_code][,team][,note]
   'team' is the division and drives the monthly tracker export. Leaving the
   column out of a later import does not unassign anyone.
   The [arn] is the app cell's 'terraform output enrollment_secret_arn'; pass it
   and the plaintext is stored in Secrets Manager instead of printed only once.
+
+  portal-admin is needed ONCE per environment, after migration 0012. Until it is
+  run, everyone who can sign in to the portal has full admin access and the
+  portal says so on every page. Everybody else is added from the portal itself,
+  under Settings -> Portal users.
 
 Environment (all optional):
   AWS_REGION   default us-east-1
