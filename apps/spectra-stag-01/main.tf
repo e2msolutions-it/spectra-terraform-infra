@@ -237,6 +237,15 @@ module "pipeline_portal" {
     module.task_iam.task_execution_role_arn,
   ]
 
+  # Replay this repo's SQL against a real Postgres before anything is built.
+  # The schema comes from the ops bucket, where spectra-db.sh publish already
+  # puts it, so no cross-repo credential is involved. See the sql_checks
+  # variable in modules/cicd-pipeline for why this is here and not in GitHub.
+  sql_checks = {
+    migrations_s3_uri    = "${local.dat.db_artifacts_s3_base}/migrations"
+    artifacts_bucket_arn = local.dat.db_artifacts_bucket_arn
+  }
+
   images = [
     {
       key            = "portal"

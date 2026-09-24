@@ -26,6 +26,11 @@ output "db_artifacts_bucket" {
   value = module.db_artifacts.bucket_name
 }
 
+output "db_artifacts_bucket_arn" {
+  description = "So an app cell can grant its portal build read access to the published migrations."
+  value       = module.db_artifacts.bucket_arn
+}
+
 output "db_artifacts_s3_base" {
   description = "Pass to spectra-db.sh as S3_BASE."
   value       = module.db_artifacts.s3_base

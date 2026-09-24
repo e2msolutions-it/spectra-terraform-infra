@@ -66,6 +66,38 @@ data "aws_iam_policy_document" "build" {
     actions   = ["kms:Decrypt", "kms:GenerateDataKey"]
     resources = [var.kms_key_arn]
   }
+
+  # Read-only, and only the migration files. This is what replaces the
+  # cross-repo GitHub token the deleted Actions workflow needed: the schema is
+  # already published to the ops bucket by db-bootstrap/spectra-db.sh, so the
+  # build reads it with an IAM statement instead of a credential somebody has
+  # to mint, store and rotate.
+  #
+  # ListBucket is separate from GetObject because `aws s3 sync` needs both, and
+  # it is prefix-scoped: this role can enumerate spectra-db/migrations/ and
+  # nothing else in the bucket.
+  dynamic "statement" {
+    for_each = var.sql_checks == null ? [] : [1]
+    content {
+      sid       = "ReadMigrations"
+      actions   = ["s3:GetObject"]
+      resources = ["${var.sql_checks.artifacts_bucket_arn}/spectra-db/migrations/*"]
+    }
+  }
+
+  dynamic "statement" {
+    for_each = var.sql_checks == null ? [] : [1]
+    content {
+      sid       = "ListMigrations"
+      actions   = ["s3:ListBucket"]
+      resources = [var.sql_checks.artifacts_bucket_arn]
+      condition {
+        test     = "StringLike"
+        variable = "s3:prefix"
+        values   = ["spectra-db/migrations/*"]
+      }
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "build" {

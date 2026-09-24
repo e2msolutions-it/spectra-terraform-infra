@@ -67,6 +67,45 @@ variable "build_image" {
   default     = "aws/codebuild/amazonlinux2-aarch64-standard:3.0"
 }
 
+# ---- Checks that run BEFORE anything is built ----
+variable "sql_checks" {
+  description = <<-EOT
+    Opt-in. When set, this pipeline replays the repo's SQL against a real
+    Postgres and runs its structural assertions BEFORE the first docker build.
+    Leave null (the default) and nothing changes - the api pipelines pass
+    nothing today and their plans are unaffected.
+
+      migrations_s3_uri     s3://bucket/prefix/migrations - where
+                            db-bootstrap/spectra-db.sh publish puts the .sql
+                            files. The schema lives in agent-api and the
+                            queries live in portal, and the ops bucket is the
+                            one place both already agree on.
+      artifacts_bucket_arn  that bucket, so the build role can read it.
+
+    WHY THIS RUNS HERE AND NOT IN GITHUB ACTIONS. A workflow was written and
+    then deleted: it needed a cross-repo token to reach agent-api's migrations
+    from the portal repo, no such token exists, and it was red on every pull
+    request. A permanently-failing check is worse than none, because people
+    learn to merge past it.
+
+    The earlier reasoning for GitHub was also simply wrong. It argued the check
+    must run before the MERGE. What actually matters is before the DEPLOY: on
+    22 September the merge was harmless and the deploy was the outage. A check
+    that fails here fails the build, so no image is pushed, the Deploy stage
+    never runs, and ECS stays on the task definition it is already serving.
+    Staging does not go down. That is a strictly better failure than a red tick
+    on a pull request somebody merges anyway.
+
+    And the cross-repo problem dissolves: the migrations are already in the ops
+    bucket, so this needs an IAM statement rather than a credential.
+  EOT
+  type = object({
+    migrations_s3_uri    = string
+    artifacts_bucket_arn = string
+  })
+  default = null
+}
+
 variable "build_timeout_minutes" {
   type    = number
   default = 30
