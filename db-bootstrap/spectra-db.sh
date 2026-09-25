@@ -129,6 +129,33 @@ cmd_migrate() {
       -c "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO $role;" \
       -c "GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO $role;" \
       -c "GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO $role;"
+
+    # ...AND THEN TAKE TWO OF THEM BACK. The blanket grant above is ON ALL
+    # TABLES, so it hands UPDATE and DELETE on audit_log straight back to the
+    # app role every time this runs - undoing migration 0014 on the very next
+    # migrate. That was measured, not guessed.
+    #
+    # audit_log is append-only for the application: INSERT and SELECT only.
+    # Retention still works, because spectra_prune_audit is SECURITY DEFINER
+    # and runs as the table's owner rather than as the caller.
+    #
+    # audit_seal goes the same way: the worker records a seal only AFTER the
+    # object is in a bucket it cannot delete from, so a seal row that could be
+    # removed would claim something the S3 object flatly contradicts.
+    #
+    # Tables added before 0014 exists in a database are skipped quietly - this
+    # script must stay runnable against a partially-migrated environment.
+    psql "$BASE dbname=$DB" -v ON_ERROR_STOP=1 -q -c "
+      DO \$do\$
+      BEGIN
+        IF to_regclass('audit_log') IS NOT NULL THEN
+          REVOKE UPDATE, DELETE, TRUNCATE ON audit_log FROM $role;
+        END IF;
+        IF to_regclass('audit_seal') IS NOT NULL THEN
+          REVOKE UPDATE, DELETE, TRUNCATE ON audit_seal FROM $role;
+        END IF;
+      END
+      \$do\$;"
     local created
     created="$(psql "$BASE dbname=$DB" -tAc "SELECT spectra_ensure_month_partitions(2);" 2>/dev/null || echo "n/a")"
     log "$DB: $applied migration(s) applied, grants reconciled, partitions created=$created"

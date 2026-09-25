@@ -81,8 +81,23 @@ resource "aws_iam_role_policy" "task" {
   policy = data.aws_iam_policy_document.task.json
 }
 
-# ---- Worker role: drains the queue and writes to Postgres. Deliberately has
-#      NO S3 or KMS access - it only handles metadata, never screenshot bytes.
+# ---- Worker role: drains the queue and writes to Postgres.
+#
+# THE "NO S3" RULE IS NARROWED HERE, NOT ABANDONED, and the difference matters
+# enough to write down. The original rule existed so the worker could never
+# reach a screenshot: it handles metadata, and metadata is all it should be
+# able to read. That still holds exactly. What it gains below is s3:PutObject
+# on ONE bucket - the audit vault - with NO GetObject, NO ListBucket, and no
+# access whatsoever to the screenshots bucket.
+#
+# Write-only access to an append-only vault is a different capability from read
+# access to people's screens. The worker still cannot see a single frame; it
+# also cannot read back, or even enumerate, what it has written.
+#
+# kms:GenerateDataKey comes with it because the vault is SSE-KMS and a PUT to
+# an encrypted bucket fails without it. kms:Decrypt is deliberately NOT
+# granted, which is what keeps "cannot read back" true rather than merely
+# intended.
 resource "aws_iam_role" "worker" {
   name               = "${var.name}-worker-task"
   assume_role_policy = data.aws_iam_policy_document.assume.json
@@ -104,6 +119,31 @@ data "aws_iam_policy_document" "worker" {
     sid       = "RdsIamAuth"
     actions   = ["rds-db:connect"]
     resources = ["arn:aws:rds-db:${var.region}:${var.account_id}:dbuser:${var.db_resource_id}/${var.db_name}_app"]
+  }
+
+  # PutObject only, one bucket, no read of any kind. See the note above the
+  # role. s3:PutObject covers writing the sealed NDJSON; nothing here permits
+  # DeleteObject, and Object Lock would refuse it anyway - the IAM statement
+  # and the bucket configuration say the same thing twice on purpose, because
+  # a bucket setting somebody changes should not silently widen a role.
+  dynamic "statement" {
+    for_each = var.audit_vault_bucket_arn == "" ? [] : [1]
+    content {
+      sid       = "SealAuditLog"
+      actions   = ["s3:PutObject"]
+      resources = ["${var.audit_vault_bucket_arn}/*"]
+    }
+  }
+
+  # Encrypting the PUT, and only that. kms:Decrypt is NOT here, so the worker
+  # cannot read back what it sealed even if the bucket policy changed.
+  dynamic "statement" {
+    for_each = var.audit_vault_bucket_arn == "" ? [] : [1]
+    content {
+      sid       = "SealAuditLogKms"
+      actions   = ["kms:GenerateDataKey"]
+      resources = [var.kms_key_arn]
+    }
   }
 }
 

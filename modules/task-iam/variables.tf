@@ -31,6 +31,15 @@ variable "db_name" {
   type        = string
 }
 
+variable "audit_vault_bucket_arn" {
+  description = <<-EOT
+    The Object Lock vault the worker seals audit rows into. Empty (the default)
+    grants nothing, so a cell that has not created a vault is unaffected.
+  EOT
+  type        = string
+  default     = ""
+}
+
 variable "events_queue_arn" {
   description = "ARN of this env's ingest queue. agent-api may only send; the worker may only receive/delete."
   type        = string

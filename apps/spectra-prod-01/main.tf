@@ -44,6 +44,19 @@ module "events_queue" {
 }
 
 # ---- App IAM roles for the ECS tasks (shared module) ----
+# ---- Audit vault: a WORM copy of the audit log ----
+# Migration 0014 makes audit_log append-only for the application role, but the
+# RDS master still owns the table. Nothing inside a database can defend it
+# against its own owner, so the worker seals new audit rows into this bucket,
+# where Object Lock refuses a delete from anyone at all. See the module header
+# for why COMPLIANCE rather than GOVERNANCE, and why the retention window
+# starts short.
+module "audit_vault" {
+  source      = "../../modules/audit-vault"
+  name        = local.name
+  kms_key_arn = local.net.kms_key_arn
+}
+
 module "task_iam" {
   source                 = "../../modules/task-iam"
   name                   = local.name
@@ -55,6 +68,7 @@ module "task_iam" {
   db_name                = var.db_name
   events_queue_arn       = module.events_queue.queue_arn
   app_secret_arns        = [module.app_secrets.jwt_secret_arn]
+  audit_vault_bucket_arn = module.audit_vault.bucket_arn
 }
 
 # ---- Per-env app secrets (container only; value set out-of-band) ----
@@ -170,6 +184,11 @@ module "worker" {
     DB_USER          = "${var.db_name}_app"
     EVENTS_QUEUE_URL = module.events_queue.queue_url
     RETAIN_MONTHS    = "6"
+
+    # Sealing is OFF until this is set, so the bucket exists and is empty until
+    # the worker carrying the sealer is deployed. Order of operations, not a
+    # feature flag: apply the infrastructure, then ship the code.
+    AUDIT_VAULT_BUCKET = module.audit_vault.bucket_name
   }
 }
 
