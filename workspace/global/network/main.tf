@@ -14,6 +14,10 @@ module "security" {
   name           = var.name
   vpc_id         = module.network.vpc_id
   waf_rate_limit = var.waf_rate_limit
+
+  # Empty until an office is listed, at which point that office stops being
+  # rate-limited as though it were a single machine. See the variable.
+  waf_rate_limit_exempt_ips = var.waf_rate_limit_exempt_ips
 }
 
 # Cross-layer wiring is via Scalr remote-state sharing — downstream workspaces
