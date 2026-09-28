@@ -1,26 +1,35 @@
-variable "name" {
-  type    = string
-  default = "spectra"
+variable "environments" {
+  description = <<-EOT
+    One PagerDuty service per entry, named exactly this. These are the app cell
+    names, e.g. ["spectra-prod-01", "spectra-stag-01"].
+
+    NOT component names. See the header of main.tf for why the environment is
+    the thing worth separating and the component belongs in the alarm name.
+  EOT
+  type        = list(string)
 }
 
-variable "escalation_user_ids" {
-  description = "PagerDuty user IDs on the first escalation rule."
-  type        = list(string)
-  default     = []
-}
+variable "escalation_policy_id" {
+  description = <<-EOT
+    PagerDuty escalation policy every service routes to.
 
-variable "services" {
-  description = "Alertable services to register in PagerDuty."
-  type        = list(string)
-  default     = ["agent-api", "portal", "worker", "rds"]
+    A variable rather than a literal so production and staging can diverge later
+    without touching this module - the realistic next step being a policy that
+    pages for prod and only notifies for stag. The default preserves the ID this
+    module was already using.
+  EOT
+  type        = string
+  default     = "PRHK1TH"
 }
 
 variable "auto_resolve_timeout" {
-  type    = number
-  default = 14400
+  description = "Seconds before PagerDuty auto-resolves an untouched incident. null disables it."
+  type        = string
+  default     = null
 }
 
 variable "ack_timeout" {
-  type    = number
-  default = 1800
+  description = "Seconds before an acknowledged incident re-escalates. null disables it."
+  type        = string
+  default     = null
 }

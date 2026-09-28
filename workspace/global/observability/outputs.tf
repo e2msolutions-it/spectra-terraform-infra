@@ -1,9 +1,20 @@
-output "escalation_policy_id" {
-  value = module.pagerduty.escalation_policy_id
+# escalation_policy_id is GONE. The module stopped creating the policy - it
+# now references an existing one by id - so an output reading
+# pagerduty_escalation_policy.this.id referred to a resource that no longer
+# exists and failed at validate.
+
+output "pagerduty_service_ids" {
+  description = "Environment name -> PagerDuty service id."
+  value       = module.pagerduty.service_ids
 }
 
-output "service_ids" {
-  value = module.pagerduty.service_ids
+# THE APP CELLS READ THIS to subscribe their alarm topic. Sensitive because the
+# URL embeds the routing key: anything holding it can raise incidents on that
+# service.
+output "pagerduty_integration_urls" {
+  description = "Environment name -> the HTTPS endpoint its alarm topic POSTs to."
+  value       = module.pagerduty.integration_urls
+  sensitive   = true
 }
 
 output "security_findings_topic_arn" {

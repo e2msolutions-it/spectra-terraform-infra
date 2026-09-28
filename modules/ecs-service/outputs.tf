@@ -24,6 +24,13 @@ output "target_group_arn" {
   value = try(aws_lb_target_group.this[0].arn, "")
 }
 
+# Same reasoning as alb_arn_suffix: CloudWatch's TargetGroup dimension is
+# "targetgroup/<name>/<id>", not the ARN. Empty for a service with no target
+# group (the worker), which is why alarms on it are ECS-only.
+output "target_group_arn_suffix" {
+  value = try(aws_lb_target_group.this[0].arn_suffix, "")
+}
+
 output "force_deploy_command" {
   description = "Roll out a Terraform-side task-definition change (env vars etc). Needed because the service ignores task_definition so CI can own it."
   value       = "aws ecs update-service --region ${var.region} --cluster ${element(split("/", var.cluster_arn), length(split("/", var.cluster_arn)) - 1)} --service ${aws_ecs_service.this.name} --task-definition ${aws_ecs_task_definition.this.family} --force-new-deployment"

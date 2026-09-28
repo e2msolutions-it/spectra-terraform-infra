@@ -174,3 +174,9 @@ variable "pipeline_require_approval" {
   type        = bool
   default     = true
 }
+
+variable "observability_workspace" {
+  description = "Scalr workspace name for workspace/global/observability, which owns the PagerDuty services."
+  type        = string
+  default     = "spectra-global-observability"
+}

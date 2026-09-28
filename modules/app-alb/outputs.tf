@@ -2,6 +2,13 @@ output "alb_arn" {
   value = aws_lb.this.arn
 }
 
+# CloudWatch's LoadBalancer dimension is NOT the ARN - it is the trailing
+# "app/<name>/<id>". The provider exposes it directly; deriving it from the ARN
+# with string surgery in every consumer is the version that breaks quietly.
+output "alb_arn_suffix" {
+  value = aws_lb.this.arn_suffix
+}
+
 output "alb_dns_name" {
   value = aws_lb.this.dns_name
 }

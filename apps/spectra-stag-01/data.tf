@@ -25,6 +25,18 @@ locals {
   dat  = data.terraform_remote_state.data.outputs
   edge = data.terraform_remote_state.edge.outputs
   cicd = data.terraform_remote_state.cicd.outputs
+  obs  = data.terraform_remote_state.observability.outputs
+}
+
+# PagerDuty routing for this environment's alarms. One service per cell, named
+# exactly as this cell is - see modules/observability-pagerduty.
+data "terraform_remote_state" "observability" {
+  backend = "remote"
+  config = {
+    hostname     = var.scalr_hostname
+    organization = var.scalr_environment
+    workspaces   = { name = var.observability_workspace }
+  }
 }
 
 # Deferred until Phase 1: only needed now that this cell attaches target groups

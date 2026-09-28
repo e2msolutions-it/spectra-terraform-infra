@@ -192,6 +192,43 @@ module "worker" {
   }
 }
 
+# ---- Alarms, routed to this environment's PagerDuty service ----
+# Named <environment>-<component>-<condition>, e.g. spectra-stag-01-portal-5xx-error.
+# PagerDuty groups on the alarm name, so one real problem becomes one incident.
+#
+# The worker appears with an empty target group on purpose: it sits behind no
+# load balancer, so it gets CPU and memory alarms and not 5xx or unhealthy-host
+# ones, which could never fire for it.
+module "alarms" {
+  source = "../../modules/app-alarms"
+
+  name        = local.name
+  kms_key_arn = local.net.kms_key_arn
+
+  pagerduty_integration_url = try(local.obs.pagerduty_integration_urls[local.name], "")
+
+  alb_arn_suffix   = local.edge.alb_arn_suffix
+  ecs_cluster_name = module.ecs.cluster_name
+
+  services = {
+    "agent-api" = {
+      service_name            = module.agent_api.service_name
+      target_group_arn_suffix = module.agent_api.target_group_arn_suffix
+    }
+    "portal" = {
+      service_name            = module.portal.service_name
+      target_group_arn_suffix = module.portal.target_group_arn_suffix
+    }
+    "worker" = {
+      service_name            = module.worker.service_name
+      target_group_arn_suffix = module.worker.target_group_arn_suffix
+    }
+  }
+
+  events_queue_name = module.events_queue.queue_name
+  dlq_name          = element(split(":", module.events_queue.dlq_arn), 5)
+}
+
 # ---- CI/CD: GitHub merge -> arm64 build -> ECR -> ECS rollout ----
 # The api repo yields TWO images from one source tree, so one pipeline builds
 # both and deploys both services together.

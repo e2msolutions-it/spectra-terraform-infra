@@ -108,3 +108,13 @@ output "cognito_hosted_ui" {
 output "portal_force_deploy_command" {
   value = module.portal.force_deploy_command
 }
+
+output "alarm_names" {
+  description = "Every CloudWatch alarm in this cell, so a plan can be read against what was intended."
+  value       = module.alarms.alarm_names
+}
+
+# False means the alarms exist and reach nobody.
+output "paging_enabled" {
+  value = module.alarms.paging_enabled
+}

@@ -6,7 +6,7 @@ variable "name" {
 variable "escalation_user_ids" {
   description = "PagerDuty user IDs for the first on-call escalation rule."
   type        = list(string)
-  default     = []
+  default     = ["PH08ET3"]
 }
 
 variable "region" {
@@ -48,4 +48,14 @@ variable "enable_aws_config" {
   description = "AWS Config, off by default on cost grounds. See modules/threat-detection/variables.tf."
   type        = bool
   default     = false
+}
+
+variable "environments" {
+  description = <<-EOT
+    App cell names, one PagerDuty service each. These must match the cell names
+    exactly, because the alarms in each cell are prefixed with the same string
+    and PagerDuty groups on the alarm name.
+  EOT
+  type        = list(string)
+  default     = ["spectra-prod-01", "spectra-stag-01"]
 }

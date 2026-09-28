@@ -3,6 +3,11 @@ output "alb_arn" {
   value = module.alb.alb_arn
 }
 
+output "alb_arn_suffix" {
+  description = "For CloudWatch alarms in the app cells."
+  value       = module.alb.alb_arn_suffix
+}
+
 output "alb_dns_name" {
   value = module.alb.alb_dns_name
 }
