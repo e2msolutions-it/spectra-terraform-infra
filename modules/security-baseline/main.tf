@@ -1,8 +1,81 @@
-# KMS key for data at rest (S3, RDS, Secrets)
+# KMS key for data at rest (S3, RDS, Secrets) AND for the SNS topics that
+# alarms and security findings are published to.
+#
+# ---------------------------------------------------------------------------
+# WHY THIS KEY NEEDS AN EXPLICIT POLICY, learned the hard way on 29 Sep.
+#
+# Without a policy argument AWS attaches its DEFAULT key policy, which grants
+# the account root and nothing else. IAM principals then reach the key through
+# their own IAM policies, which is why RDS, S3 and Secrets Manager all worked
+# from day one and this looked fine.
+#
+# AWS SERVICE PRINCIPALS HAVE NO IAM POLICY. When a CloudWatch alarm publishes
+# to an SNS topic encrypted with this key, the caller is the service principal
+# cloudwatch.amazonaws.com, and the default policy does not know it. The
+# GenerateDataKey call is denied, SNS rejects the publish, and - this is the
+# part that cost us an evening - NOTHING SURFACES. The alarm still transitions
+# to ALARM. The subscription still shows as confirmed. terraform apply is
+# green. The alert simply never arrives.
+#
+# The only place the failure is visible is the alarm's own action history:
+#
+#   aws cloudwatch describe-alarm-history --alarm-name <name> \
+#     --history-item-type Action
+#
+# which records "Failed to execute action". We found it by firing a real alarm
+# with set-alarm-state and watching PagerDuty stay silent.
+#
+# So: cloudwatch.amazonaws.com for app alarms, events.amazonaws.com for the
+# GuardDuty findings EventBridge rule. Both need Decrypt as well as
+# GenerateDataKey* - SNS decrypts the message to deliver it.
+#
+# NO CONDITIONS ON THE SERVICE STATEMENT, deliberately. An aws:SourceAccount or
+# kms:ViaService condition looks tighter and is how this breaks again: if the
+# calling service does not populate that context key, the condition evaluates
+# false and we are back to a silent denial with a policy that reads correct.
+# This grant is two actions, on one key, in one account, to two AWS services.
+#
+# ---------------------------------------------------------------------------
+# THE ROOT STATEMENT IS NOT OPTIONAL AND NOT DECORATION. Removing it, or
+# applying a policy document that omits it, makes the key permanently
+# unmanageable - there is no break-glass, AWS support cannot restore access,
+# and every bucket, database and secret encrypted with it becomes unreadable.
+# Read any diff to this policy twice.
+data "aws_caller_identity" "current" {}
+
+data "aws_iam_policy_document" "kms_data" {
+  statement {
+    sid       = "EnableIAMUserPermissions"
+    actions   = ["kms:*"]
+    resources = ["*"]
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
+    }
+  }
+
+  statement {
+    sid = "AllowAWSServicesToPublishToEncryptedTopics"
+    actions = [
+      "kms:GenerateDataKey*",
+      "kms:Decrypt",
+    ]
+    resources = ["*"]
+    principals {
+      type = "Service"
+      identifiers = [
+        "cloudwatch.amazonaws.com", # app alarms -> ${var.name}-*-alarms
+        "events.amazonaws.com",     # GuardDuty findings -> ${var.name}-security-findings
+      ]
+    }
+  }
+}
+
 resource "aws_kms_key" "data" {
   description             = "${var.name} data-at-rest key"
   deletion_window_in_days = 14
   enable_key_rotation     = true
+  policy                  = data.aws_iam_policy_document.kms_data.json
 }
 
 resource "aws_kms_alias" "data" {
