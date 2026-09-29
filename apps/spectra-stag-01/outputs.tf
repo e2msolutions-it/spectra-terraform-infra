@@ -116,5 +116,6 @@ output "alarm_names" {
 
 # False means the alarms exist and reach nobody.
 output "paging_enabled" {
-  value = module.alarms.paging_enabled
+  value     = module.alarms.paging_enabled
+  sensitive = true
 }
