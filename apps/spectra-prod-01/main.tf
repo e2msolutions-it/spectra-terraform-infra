@@ -209,19 +209,23 @@ module "alarms" {
 
   alb_arn_suffix   = local.edge.alb_arn_suffix
   ecs_cluster_name = module.ecs.cluster_name
+  ecs_cluster_arn  = module.ecs.cluster_arn
 
   services = {
     "agent-api" = {
       service_name            = module.agent_api.service_name
       target_group_arn_suffix = module.agent_api.target_group_arn_suffix
+      log_group               = module.agent_api.log_group
     }
     "portal" = {
       service_name            = module.portal.service_name
       target_group_arn_suffix = module.portal.target_group_arn_suffix
+      log_group               = module.portal.log_group
     }
     "worker" = {
       service_name            = module.worker.service_name
       target_group_arn_suffix = module.worker.target_group_arn_suffix
+      log_group               = module.worker.log_group
     }
   }
 

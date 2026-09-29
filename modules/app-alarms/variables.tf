@@ -31,6 +31,13 @@ variable "ecs_cluster_name" {
   type = string
 }
 
+# Needed by the task-stopped rule, which matches on clusterArn. ECS task state
+# change events are account-wide on the default bus, so without this filter
+# each cell would page for the other environment's crashes too.
+variable "ecs_cluster_arn" {
+  type = string
+}
+
 variable "services" {
   description = <<-EOT
     Component name -> its ECS service and target group. The KEY is what appears
@@ -43,6 +50,7 @@ variable "services" {
   type = map(object({
     service_name            = string
     target_group_arn_suffix = string
+    log_group               = string
   }))
 }
 
@@ -89,4 +97,21 @@ variable "threshold_queue_age_seconds" {
   EOT
   type        = number
   default     = 900
+}
+
+# WHAT COUNTS AS A FATAL LOG LINE. CloudWatch Logs filter patterns, not regex:
+# a leading ? makes each term an OR, and matching is case-sensitive.
+#
+#   panic:          Go's panic, first line, both Go services
+#   fatal error:    Go runtime failures - out of memory, deadlock detected
+#   FATAL ERROR:    V8, which is how a Node heap-limit death announces itself
+#   UnhandledPromiseRejection   Node, which exits non-zero on these
+#
+# DELIBERATELY NOT "error" or "Error". Both services log handled errors at
+# level error constantly and correctly - a failed upload, a rejected signature.
+# Alarming on those would page hourly and be muted within a week. This pattern
+# is meant to match only lines a process prints while dying.
+variable "log_fatal_pattern" {
+  type    = string
+  default = "?\"panic: \" ?\"fatal error: \" ?\"FATAL ERROR\" ?\"UnhandledPromiseRejection\""
 }
