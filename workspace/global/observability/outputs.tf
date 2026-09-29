@@ -21,8 +21,15 @@ output "security_findings_topic_arn" {
   value = module.threat_detection.findings_topic_arn
 }
 
-# Read this after the first apply. It says plainly when findings are being
-# generated and going nowhere.
-output "security_alerts_pending_confirmation" {
-  value = module.threat_detection.pending_confirmations
+# Needed for `aws guardduty create-sample-findings`, which is how the delivery
+# path is tested end to end - and there is no other convenient place to find it.
+output "guardduty_detector_id" {
+  value = module.threat_detection.guardduty_detector_id
+}
+
+# Who alerts are addressed to. NOT a status: it prints the configured list
+# whether or not anyone confirmed. See the module output's header for why the
+# old name (security_alerts_pending_confirmation) was replaced.
+output "security_alert_recipients" {
+  value = module.threat_detection.alert_recipients
 }
